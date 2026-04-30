@@ -58,9 +58,7 @@ func (c *Tree) Resolve() error {
 	return resolveAll(c.root, c.lookupRef)
 }
 
-// ToObject deserializes config subtree at path into out (pointer).
-// Path may be empty to deserialize the whole config.
-func (c *Tree) ToObject(path string, out any) error {
+func (c *Tree) decodeSubtree(path string, out any) error {
 	var v any
 	if path == "" {
 		v = c.root

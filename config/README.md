@@ -7,7 +7,7 @@
 - 支持 `#include` 合并多文件配置（后者覆盖前者）
 - 支持 `${a.b.c}` 引用其它配置项、`${ENV}` 引用环境变量
 - 支持 `Get` / `GetOK` / `Set` 点路径读写
-- 支持 `ToObject(path, &obj)` 将子树反序列化到结构体（`path==""` 表示整棵配置）
+- 支持 `Object(&obj, WithObjectPath(path))` 将子树反序列化到结构体（`path==""` 表示整棵配置）
 
 **导入**：`github.com/ymhhh/go-common/config`
 
@@ -61,14 +61,14 @@ server:
   - prod.yaml
 ```
 
-#### ToObject 反序列化到结构体
+#### Object 反序列化到结构体
 
 ```go
 type Server struct {
   Port int `json:"port"`
 }
 var s Server
-if err := cfg.ToObject("server", &s); err != nil {
+if err := cfg.Object(&s, WithObjectPath("server")); err != nil {
   panic(err)
 }
 ```

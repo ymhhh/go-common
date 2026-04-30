@@ -304,7 +304,7 @@ func (c *Tree) GetRootKeys() []string {
 
 func (c *Tree) Copy() Config {
 	return &Tree{
-		root:    deepCopyAny(c.root).(map[string]any),
+		root:    DeepCopy(c.root).(map[string]any),
 		baseDir: c.baseDir,
 	}
 }
@@ -320,27 +320,5 @@ func (c *Tree) Object(model any, opts ...ObjOption) error {
 			opt(&oo)
 		}
 	}
-	return c.ToObject(oo.path, model)
-}
-
-func deepCopyAny(v any) any {
-	switch x := v.(type) {
-	case nil:
-		return nil
-	case map[string]any:
-		dst := make(map[string]any, len(x))
-		for k, vv := range x {
-			dst[k] = deepCopyAny(vv)
-		}
-		return dst
-	case []any:
-		dst := make([]any, len(x))
-		for i := range x {
-			dst[i] = deepCopyAny(x[i])
-		}
-		return dst
-	default:
-		// leaf values (string/number/bool/...) are treated as immutable for config purposes.
-		return x
-	}
+	return c.decodeSubtree(oo.path, model)
 }

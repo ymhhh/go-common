@@ -20,7 +20,7 @@ func writeFile(t *testing.T, dir, name, content string) string {
 	return p
 }
 
-func TestLoad_JSONC_Include_Ref_Env_GetSet_ToObject(t *testing.T) {
+func TestLoad_JSONC_Include_Ref_Env_GetSet_Object(t *testing.T) {
 	t.Setenv("ENV", "from-env")
 
 	dir := t.TempDir()
@@ -91,10 +91,10 @@ a:
 		t.Fatalf("x.y.z: got %d", got)
 	}
 
-	// ToObject
+	// Object
 	var obj demoObj
-	if err := cfg.ToObject("obj", &obj); err != nil {
-		t.Fatalf("ToObject: %v", err)
+	if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
+		t.Fatalf("Object: %v", err)
 	}
 	if obj.N != 456 || obj.S != "k" {
 		t.Fatalf("obj: %+v", obj)
@@ -125,7 +125,7 @@ v: 3
 	}
 }
 
-func TestLoad_YAML_Ref_Env_ToObject(t *testing.T) {
+func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 
 	dir := t.TempDir()
@@ -185,10 +185,10 @@ obj:
 		t.Fatalf("a.b map missing c")
 	}
 
-	// ToObject
+	// Object
 	var obj demoObj
-	if err := cfg.ToObject("obj", &obj); err != nil {
-		t.Fatalf("ToObject: %v", err)
+	if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
+		t.Fatalf("Object: %v", err)
 	}
 	if obj.N != 9 || obj.S != "kk" {
 		t.Fatalf("obj: %+v", obj)

@@ -43,9 +43,6 @@ type Config interface {
 	GetMap(key string) Options
 	// GetConfig get key's config
 	GetConfig(key string) Config
-	// ToObject unmarshal values to object
-	// Deprecated: see function: Object
-	ToObject(key string, model any) error
 	// Object unmarshal values to object
 	Object(model any, opts ...ObjOption) error
 	// GetValuesConfig get key's values if values can be Config, or panic
@@ -63,6 +60,14 @@ type Config interface {
 
 // Options is a string-keyed map of configuration values.
 type Options map[string]any
+
+// ToConfig Options to config
+func (p *Options) ToConfig() Config {
+	return &Tree{
+		root:    DeepCopy(p).(map[string]any),
+		baseDir: "",
+	}
+}
 
 // ObjOption configures Object unmarshalling.
 type ObjOption func(*objectOpts)
