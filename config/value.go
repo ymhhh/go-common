@@ -3,7 +3,9 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Value wraps an arbitrary config value and provides conversions.
@@ -103,6 +105,36 @@ func (v Value) Float64() (float64, error) {
 	}
 }
 
+func (v Value) Bool() (bool, error) {
+	switch x := v.v.(type) {
+	case nil:
+		return false, fmt.Errorf("config: cannot convert <nil> to bool")
+	case bool:
+		return x, nil
+	case int:
+		return x != 0, nil
+	case int64:
+		return x != 0, nil
+	case int32:
+		return x != 0, nil
+	case uint:
+		return x != 0, nil
+	case uint64:
+		return x != 0, nil
+	case float64:
+		return x != 0, nil
+	case float32:
+		return x != 0, nil
+	case json.Number:
+		i, err := x.Int64()
+		return i != 0, err
+	case string:
+		return strconv.ParseBool(strings.TrimSpace(x))
+	default:
+		return false, fmt.Errorf("config: cannot convert %T to bool", v.v)
+	}
+}
+
 func (v Value) Map() (map[string]any, error) {
 	switch x := v.v.(type) {
 	case map[string]any:
@@ -111,5 +143,35 @@ func (v Value) Map() (map[string]any, error) {
 		return nil, fmt.Errorf("config: cannot convert <nil> to map")
 	default:
 		return nil, fmt.Errorf("config: cannot convert %T to map[string]any", v.v)
+	}
+}
+
+// Slice converts the wrapped value to a []any slice.
+//
+// Supported inputs include JSON/YAML decoded sequences ([]any), other Go slice types
+// (via reflection), and JSON array strings.
+func (v Value) Slice() ([]any, error) {
+	switch x := v.v.(type) {
+	case nil:
+		return nil, fmt.Errorf("config: cannot convert <nil> to slice")
+	case []any:
+		return x, nil
+	case string:
+		var s []any
+		if err := json.Unmarshal([]byte(x), &s); err != nil {
+			return nil, fmt.Errorf("config: cannot convert string to []any: %w", err)
+		}
+		return s, nil
+	default:
+		rv := reflect.ValueOf(v.v)
+		if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+			return nil, fmt.Errorf("config: cannot convert %T to []any", v.v)
+		}
+		n := rv.Len()
+		out := make([]any, n)
+		for i := range n {
+			out[i] = rv.Index(i).Interface()
+		}
+		return out, nil
 	}
 }

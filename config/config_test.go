@@ -194,3 +194,36 @@ obj:
 		t.Fatalf("obj: %+v", obj)
 	}
 }
+
+func TestValue_Slice(t *testing.T) {
+	sl, err := (Value{v: []any{1, "a"}}).Slice()
+	if err != nil {
+		t.Fatalf("slice []any: %v", err)
+	}
+	if len(sl) != 2 {
+		t.Fatalf("len: %d", len(sl))
+	}
+
+	intSl, err := (Value{v: []int{7, 8}}).Slice()
+	if err != nil {
+		t.Fatalf("slice []int: %v", err)
+	}
+	if len(intSl) != 2 {
+		t.Fatalf("len: %d", len(intSl))
+	}
+
+	jsonSl, err := (Value{v: `[1,2,3]`}).Slice()
+	if err != nil {
+		t.Fatalf("json string slice: %v", err)
+	}
+	if len(jsonSl) != 3 {
+		t.Fatalf("json len: %d", len(jsonSl))
+	}
+
+	if _, err := (Value{v: map[string]any{}}).Slice(); err == nil {
+		t.Fatalf("expected error for map")
+	}
+	if _, err := (Value{v: nil}).Slice(); err == nil {
+		t.Fatalf("expected error for nil")
+	}
+}
