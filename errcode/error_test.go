@@ -10,7 +10,7 @@ func TestNew(t *testing.T) {
 	extra := errors.New("retry exhausted")
 	msg := errors.New("failed to create user")
 
-	e := New(
+	e := NewCode(
 		WithNamespace("user"),
 		WithID("create_failed"),
 		WithCode(10001),
@@ -47,14 +47,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestFallbackErrorString(t *testing.T) {
-	e := New(WithCode(42))
+	e := NewCode(WithCode(42))
 	if e.Error() != "errcode:42" {
 		t.Fatalf("fallback error string: got %q", e.Error())
 	}
 }
 
 func TestSetGetContext(t *testing.T) {
-	e := New()
+	e := NewCode()
 
 	if _, ok := e.GetContext("a"); ok {
 		t.Fatalf("expected missing key")
@@ -68,6 +68,33 @@ func TestSetGetContext(t *testing.T) {
 	e.SetContext("a", 1)
 	if got, ok := e.GetContext("a"); !ok || got != 1 {
 		t.Fatalf("get a: got=%v ok=%v", got, ok)
+	}
+}
+
+func TestNew_Empty(t *testing.T) {
+	e := New("")
+	if e.Error() != "errcode:0" {
+		t.Fatalf("empty New: got %q", e.Error())
+	}
+}
+
+func TestNew_Message(t *testing.T) {
+	e := New("hello")
+	if e.Message() != "hello" {
+		t.Fatalf("message: got %q", e.Message())
+	}
+	if e.Error() != "hello" {
+		t.Fatalf("error string: got %q", e.Error())
+	}
+}
+
+func TestNewf_WrapsFormattedCause(t *testing.T) {
+	e := Newf("oops %d", 9)
+	if e.Message() != "oops 9" {
+		t.Fatalf("message: got %q", e.Message())
+	}
+	if e.Error() != "oops 9" {
+		t.Fatalf("error string: got %q", e.Error())
 	}
 }
 

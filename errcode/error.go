@@ -78,7 +78,7 @@ func (t ErrorCodeTmpl) New(opts ...Option) ErrorCode {
 		base = append(base, WithErrs(errors.New(t.message)))
 	}
 	opts = append(base, opts...)
-	return New(opts...)
+	return NewCode(opts...)
 }
 
 // ErrorOptions describes attributes used to build an Error.
@@ -140,7 +140,8 @@ type Error struct {
 	ctx       map[string]any
 }
 
-func New(opts ...Option) ErrorCode {
+// NewCode creates an ErrorCode from options. With no options, it is an empty Error.
+func NewCode(opts ...Option) ErrorCode {
 	var o ErrorOptions
 	for _, opt := range opts {
 		if opt != nil {
@@ -161,6 +162,20 @@ func New(opts ...Option) ErrorCode {
 		}
 	}
 	return e
+}
+
+// New is a thin wrapper of NewCode, wrapping a stdlib error built from message as the first cause.
+// Empty message returns an empty ErrorCode (same as NewCode()).
+func New(message string) ErrorCode {
+	if message == "" {
+		return NewCode()
+	}
+	return NewCode(WithErrs(errors.New(message)))
+}
+
+// Newf is a thin wrapper of NewCode, wrapping a formatted stdlib error as the first cause.
+func Newf(format string, args ...any) ErrorCode {
+	return NewCode(WithErrs(fmt.Errorf(format, args...)))
 }
 
 func (e *Error) Namespace() string { return e.namespace }
