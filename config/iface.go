@@ -63,8 +63,14 @@ type Options map[string]any
 
 // ToConfig Options to config
 func (p *Options) ToConfig() Config {
+	if p == nil {
+		return &Tree{
+			root:    map[string]any{},
+			baseDir: "",
+		}
+	}
 	return &Tree{
-		root:    DeepCopy(p).(map[string]any),
+		root:    DeepCopy(map[string]any(*p)).(map[string]any),
 		baseDir: "",
 	}
 }
