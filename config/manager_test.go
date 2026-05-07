@@ -161,6 +161,25 @@ func TestManager_Object(t *testing.T) {
 	}
 }
 
+func TestManager_ToObjectCompatibility(t *testing.T) {
+	type obj struct {
+		N int `json:"n"`
+	}
+	c := newTestTree(map[string]any{
+		"x": map[string]any{
+			"n": 9,
+		},
+	})
+
+	var out obj
+	if err := c.ToObject("x", &out); err != nil {
+		t.Fatalf("ToObject: %v", err)
+	}
+	if out.N != 9 {
+		t.Fatalf("n=%d", out.N)
+	}
+}
+
 func TestManager_GetValuesConfig_Panic(t *testing.T) {
 	c := newTestTree(map[string]any{
 		"bad": 1,
