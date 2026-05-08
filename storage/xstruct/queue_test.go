@@ -30,6 +30,29 @@ func TestQueue_FIFO(t *testing.T) {
 	}
 }
 
+func TestQueue_ZeroValue(t *testing.T) {
+	var q Queue[int]
+
+	if _, ok := q.Dequeue(); ok {
+		t.Fatalf("zero-value queue should start empty")
+	}
+
+	q.Enqueue(1)
+	q.Enqueue(2)
+
+	v, ok := q.Dequeue()
+	if !ok || v != 1 {
+		t.Fatalf("dq1: %v ok=%v", v, ok)
+	}
+	v, ok = q.Dequeue()
+	if !ok || v != 2 {
+		t.Fatalf("dq2: %v ok=%v", v, ok)
+	}
+	if _, ok := q.Dequeue(); ok {
+		t.Fatalf("expected empty")
+	}
+}
+
 func TestQueue_Concurrent(t *testing.T) {
 	const (
 		producers = 8

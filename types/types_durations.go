@@ -92,19 +92,28 @@ func (d Duration) MarshalYAML() (any, error) {
 func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err == nil {
-		dur := ParseStringTime(s)
-		if dur == 0 && s != "" && s != "0" {
-			if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-				*d = Duration(time.Duration(n))
-				return nil
-			}
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				*d = Duration(time.Duration(f))
-				return nil
-			}
+		if s == "" {
+			*d = 0
+			return nil
 		}
-		*d = Duration(dur)
-		return nil
+		dur := ParseStringTime(s)
+		if dur != 0 || s == "0" {
+			*d = Duration(dur)
+			return nil
+		}
+		if d2, err := time.ParseDuration(s); err == nil {
+			*d = Duration(d2)
+			return nil
+		}
+		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+			*d = Duration(time.Duration(n))
+			return nil
+		}
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			*d = Duration(time.Duration(f))
+			return nil
+		}
+		return fmt.Errorf("types: invalid duration %q", s)
 	}
 
 	var n int64
@@ -119,6 +128,5 @@ func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 		return nil
 	}
 
-	*d = 0
-	return nil
+	return fmt.Errorf("types: invalid duration value")
 }

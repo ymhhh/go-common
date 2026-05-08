@@ -76,7 +76,11 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 
 func parseJSON(raw []byte) (map[string]any, error) {
 	raw = bytes.TrimSpace(raw)
-	raw = stripJSONComments(raw)
+	var err error
+	raw, err = stripJSONComments(raw)
+	if err != nil {
+		return nil, err
+	}
 
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()

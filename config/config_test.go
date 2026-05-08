@@ -125,6 +125,18 @@ v: 3
 	}
 }
 
+func TestLoad_JSONC_UnterminatedBlockComment(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "bad.json", `{
+  "safe": true
+  /* missing close
+`)
+
+	if _, err := Load(main); err == nil {
+		t.Fatalf("expected unterminated block comment error")
+	}
+}
+
 func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 

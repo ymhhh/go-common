@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 
@@ -9,6 +10,8 @@ import (
 
 var (
 	_ flag.Value       = (*Secret)(nil)
+	_ json.Marshaler   = Secret("")
+	_ json.Unmarshaler = (*Secret)(nil)
 	_ yaml.Marshaler   = (*Secret)(nil)
 	_ yaml.Unmarshaler = (*Secret)(nil)
 
@@ -37,6 +40,25 @@ func (p *Secret) Set(s string) error {
 // MarshalYAML implements the yaml.Marshaler interface for Secret.
 func (p Secret) MarshalYAML() (any, error) {
 	return Hidden, nil
+}
+
+// MarshalJSON implements json.Marshaler without exposing the underlying secret.
+func (p Secret) MarshalJSON() ([]byte, error) {
+	return json.Marshal(Hidden)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (p *Secret) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*p = Secret("")
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	*p = Secret(s)
+	return nil
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Secret.
