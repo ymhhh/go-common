@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +84,13 @@ func parseJSON(raw []byte) (map[string]any, error) {
 
 	var v any
 	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("config: json contains multiple top-level values")
+		}
 		return nil, err
 	}
 	m, ok := normalize(v).(map[string]any)
