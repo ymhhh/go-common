@@ -125,6 +125,15 @@ v: 3
 	}
 }
 
+func TestLoad_JSONRejectsTrailingTopLevelValue(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "bad.json", `{"safe": true}{"ignored": true}`)
+
+	if _, err := Load(main); err == nil {
+		t.Fatalf("expected trailing JSON value error")
+	}
+}
+
 func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 
