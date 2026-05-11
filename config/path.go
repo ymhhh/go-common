@@ -56,9 +56,7 @@ func setPath(root map[string]any, path string, value any) error {
 		}
 		nm, ok := next.(map[string]any)
 		if !ok {
-			// replace non-map with map to continue path
-			nm = map[string]any{}
-			cur[p] = nm
+			return fmt.Errorf("config: cannot set %q: %q is %T, not an object", path, strings.Join(parts[:i+1], "."), next)
 		}
 		cur = nm
 	}
