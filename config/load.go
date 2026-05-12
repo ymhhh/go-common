@@ -25,8 +25,12 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 		return nil, fmt.Errorf("config: read %s: %w", path, err)
 	}
 
-	incFromLines := parseIncludeLines(raw)
 	ext := strings.ToLower(filepath.Ext(path))
+	includeRaw := raw
+	if ext == ".json" {
+		includeRaw = stripJSONComments(raw)
+	}
+	incFromLines := parseIncludeLines(includeRaw)
 
 	var root map[string]any
 	switch ext {

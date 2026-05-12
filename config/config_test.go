@@ -125,6 +125,33 @@ v: 3
 	}
 }
 
+func TestLoad_JSONC_CommentedIncludeIgnored(t *testing.T) {
+	dir := t.TempDir()
+
+	writeFile(t, dir, "disabled.yaml", `
+danger: true
+`)
+	main := writeFile(t, dir, "main.json", `
+/*
+#include disabled.yaml
+*/
+{
+  "safe": true
+}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if _, ok := cfg.GetOK("danger"); ok {
+		t.Fatalf("commented include was loaded")
+	}
+	if got, _ := cfg.Get("safe").Bool(); !got {
+		t.Fatalf("safe: got %v", got)
+	}
+}
+
 func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 
