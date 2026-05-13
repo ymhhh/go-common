@@ -228,6 +228,14 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		return big.NewInt(x)
 	case uint64:
 		return new(big.Int).SetUint64(x)
+	case json.Number:
+		if n, ok := jsonNumberByteSize(x); ok {
+			return n
+		}
+		if len(defValue) > 0 {
+			return defValue[0]
+		}
+		return nil
 	case float64:
 		return big.NewInt(int64(x))
 	}
@@ -244,6 +252,20 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		return defValue[0]
 	}
 	return out
+}
+
+func jsonNumberByteSize(n json.Number) (*big.Int, bool) {
+	s := n.String()
+	if i, ok := new(big.Int).SetString(s, 10); ok {
+		return i, true
+	}
+
+	f, _, err := big.ParseFloat(s, 10, 256, big.ToZero)
+	if err != nil {
+		return nil, false
+	}
+	i, _ := f.Int(nil)
+	return i, true
 }
 
 func (c *Tree) GetMap(key string) Options {
