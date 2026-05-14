@@ -125,6 +125,32 @@ v: 3
 	}
 }
 
+func TestLoad_YAML_IndentedIncludeTextPreserved(t *testing.T) {
+	dir := t.TempDir()
+
+	main := writeFile(t, dir, "main.yaml", `
+script: |
+  echo before
+  #include missing.yaml
+  echo after
+v: 3
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	got, _ := cfg.Get("script").String()
+	want := "echo before\n#include missing.yaml\necho after\n"
+	if got != want {
+		t.Fatalf("script:\ngot  %q\nwant %q", got, want)
+	}
+	if got, _ := cfg.Get("v").Int(); got != 3 {
+		t.Fatalf("v: got %d", got)
+	}
+}
+
 func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 
