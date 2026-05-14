@@ -157,16 +157,14 @@ func toStringSlice(v any) []string {
 //
 //	#include path/to/other.yaml
 //
-// Lines are parsed before JSON/YAML decoding. This works well with JSONC where
-// #include can be used as a standalone line. In YAML, it is treated as a comment,
-// but we still honor it at this pre-parse stage.
+// Lines are parsed before JSON/YAML decoding. Include directives must start at
+// column zero so indented YAML scalar content is not treated as a directive.
 func parseIncludeLines(raw []byte) []string {
 	lines := bytes.Split(raw, []byte{'\n'})
 	var out []string
 	for _, ln := range lines {
-		s := strings.TrimSpace(string(ln))
-		if strings.HasPrefix(s, "#include ") {
-			p := strings.TrimSpace(strings.TrimPrefix(s, "#include "))
+		if bytes.HasPrefix(ln, []byte("#include ")) {
+			p := strings.TrimSpace(string(bytes.TrimPrefix(ln, []byte("#include "))))
 			if p != "" {
 				out = append(out, p)
 			}
@@ -179,8 +177,7 @@ func stripIncludeLines(raw []byte) []byte {
 	lines := bytes.Split(raw, []byte{'\n'})
 	out := make([][]byte, 0, len(lines))
 	for _, ln := range lines {
-		s := strings.TrimSpace(string(ln))
-		if strings.HasPrefix(s, "#include ") {
+		if bytes.HasPrefix(ln, []byte("#include ")) {
 			continue
 		}
 		out = append(out, ln)
