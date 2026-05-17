@@ -59,6 +59,15 @@ func TestParseStringTime(t *testing.T) {
 	if got := ParseStringTime("4h"); got != 4*time.Hour {
 		t.Fatalf("4h: got %v", got)
 	}
+	if got := ParseStringTime("292y"); got != 292*365*24*time.Hour {
+		t.Fatalf("292y: got %v", got)
+	}
+	if got := ParseStringTime("300y", 7*time.Second); got != 7*time.Second {
+		t.Fatalf("overflow default: got %v", got)
+	}
+	if got := ParseStringTime("300y"); got != 0 {
+		t.Fatalf("overflow without default: got %v", got)
+	}
 
 	// default when not matched
 	if got := ParseStringTime("bad", 7*time.Second); got != 7*time.Second {
