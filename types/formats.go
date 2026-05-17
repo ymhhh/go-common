@@ -120,37 +120,50 @@ func ParseStringTime(s string, defValue ...time.Duration) time.Duration {
 	groups, matched := FindStringSubmatchMap(s, timeReg)
 
 	if !matched {
-		if len(defValue) == 0 {
-			return 0
-		}
-		return defValue[0]
+		return defaultDuration(defValue...)
 	}
 
-	i, _ := ToInt64(groups["value"])
+	i, err := ToInt64(groups["value"])
+	if err != nil {
+		return defaultDuration(defValue...)
+	}
 
 	switch groups["unit"] {
 	case "nanoseconds", "nanosecond", "nanos", "nano", "ns":
-		return time.Nanosecond * time.Duration(i)
+		return checkedDuration(time.Nanosecond, i, defValue...)
 	case "microseconds", "microsecond", "micros", "micro", "us":
-		return time.Microsecond * time.Duration(i)
+		return checkedDuration(time.Microsecond, i, defValue...)
 	case "milliseconds", "millisecond", "millis", "milli", "ms":
-		return time.Millisecond * time.Duration(i)
+		return checkedDuration(time.Millisecond, i, defValue...)
 	case "seconds", "second", "s":
-		return time.Second * time.Duration(i)
+		return checkedDuration(time.Second, i, defValue...)
 	case "minutes", "minute", "m":
-		return time.Minute * time.Duration(i)
+		return checkedDuration(time.Minute, i, defValue...)
 	case "hours", "hour", "h":
-		return time.Hour * time.Duration(i)
+		return checkedDuration(time.Hour, i, defValue...)
 	case "days", "day", "d":
-		return time.Hour * 24 * time.Duration(i)
+		return checkedDuration(24*time.Hour, i, defValue...)
 	case "weeks", "week", "w":
-		return time.Hour * 24 * 7 * time.Duration(i)
+		return checkedDuration(7*24*time.Hour, i, defValue...)
 	case "years", "year", "y":
-		return time.Hour * 24 * 365 * time.Duration(i)
+		return checkedDuration(365*24*time.Hour, i, defValue...)
 	default:
-		if len(defValue) == 0 {
-			return 0
-		}
-		return defValue[0]
+		return defaultDuration(defValue...)
 	}
+}
+
+func defaultDuration(defValue ...time.Duration) time.Duration {
+	if len(defValue) == 0 {
+		return 0
+	}
+	return defValue[0]
+}
+
+func checkedDuration(unit time.Duration, value int64, defValue ...time.Duration) time.Duration {
+	const maxDuration = time.Duration(1<<63 - 1)
+
+	if value < 0 || value > int64(maxDuration)/int64(unit) {
+		return defaultDuration(defValue...)
+	}
+	return unit * time.Duration(value)
 }
