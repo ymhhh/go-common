@@ -41,9 +41,12 @@ func (p Secret) MarshalYAML() (any, error) {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Secret.
 func (p *Secret) UnmarshalYAML(value *yaml.Node) error {
-	if value == nil || value.Value == "" {
+	if value == nil {
 		*p = Secret("")
 		return nil
+	}
+	if value.Kind != yaml.ScalarNode {
+		return fmt.Errorf("types: secret must be a scalar, got YAML node kind %d", value.Kind)
 	}
 	*p = Secret(value.Value)
 	return nil
