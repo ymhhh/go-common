@@ -186,12 +186,7 @@ func openOutput(cfg Config) (io.Writer, io.Closer, error) {
 	}
 
 	// rotate output (lumberjack)
-	if cfg.File.Rotate.Enabled ||
-		cfg.File.Rotate.MaxSizeMB > 0 ||
-		cfg.File.Rotate.MaxBackups > 0 ||
-		cfg.File.Rotate.MaxAgeDays > 0 ||
-		cfg.File.Rotate.Compress ||
-		cfg.File.Rotate.LocalTime {
+	if cfg.File.Rotate.Enabled {
 		maxSize := cfg.File.Rotate.MaxSizeMB
 		if maxSize <= 0 {
 			maxSize = 100

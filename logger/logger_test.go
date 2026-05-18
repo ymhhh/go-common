@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -91,5 +92,37 @@ func TestFromConfig_FileRotate(t *testing.T) {
 
 	if _, ok := l.Out.(*lumberjack.Logger); !ok {
 		t.Fatalf("out: %T", l.Out)
+	}
+}
+
+func TestFromConfig_FileRotateDisabledDoesNotRotate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"enabled":    false,
+					"maxSizeMB":  1,
+					"maxBackups": 2,
+					"maxAgeDays": 3,
+					"compress":   true,
+					"localTime":  true,
+				},
+			},
+		},
+	}
+	c := opts.ToConfig()
+
+	l, err := FromConfig(c)
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	if _, ok := l.Out.(*lumberjack.Logger); ok {
+		t.Fatalf("rotate disabled should open a plain file, got %T", l.Out)
 	}
 }

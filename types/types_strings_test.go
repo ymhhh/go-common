@@ -62,6 +62,25 @@ func TestSecret_YAML(t *testing.T) {
 	}
 }
 
+func TestSecret_YAMLRejectsNonScalar(t *testing.T) {
+	type cfg struct {
+		S Secret `yaml:"s"`
+	}
+
+	tests := map[string]string{
+		"sequence": "s: [real-secret-value]\n",
+		"mapping":  "s: {value: real-secret-value}\n",
+	}
+	for name, input := range tests {
+		t.Run(name, func(t *testing.T) {
+			var out cfg
+			if err := yaml.Unmarshal([]byte(input), &out); err == nil {
+				t.Fatalf("expected non-scalar secret to fail, got secret %q", string(out.S))
+			}
+		})
+	}
+}
+
 func TestStrings_FlagValue_Append(t *testing.T) {
 	var xs Strings
 
