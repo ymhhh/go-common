@@ -73,9 +73,13 @@ func (c *Tree) decodeSubtree(path string, out any) error {
 }
 
 func (c *Tree) lookupRef(ref string) (any, bool) {
-	// env first
+	// Prefer explicit config paths over ambient environment variables. This keeps
+	// ${a.b.c} deterministic even if the process environment contains "a.b.c".
+	if v, ok := getPath(c.root, ref); ok {
+		return v, true
+	}
 	if v, ok := lookupEnv(ref); ok {
 		return v, true
 	}
-	return getPath(c.root, ref)
+	return nil, false
 }

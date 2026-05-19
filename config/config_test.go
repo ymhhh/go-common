@@ -195,6 +195,32 @@ obj:
 	}
 }
 
+func TestLoad_RefPrefersConfigPathOverEnvironment(t *testing.T) {
+	t.Setenv("a.b.c", "from-env")
+	t.Setenv("ONLY_ENV", "env-fallback")
+
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+a:
+  b:
+    c: from-config
+    d: ${a.b.c}
+env: ${ONLY_ENV}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if got := cfg.GetString("a.b.d"); got != "from-config" {
+		t.Fatalf("config ref should win over same-named env: got %q", got)
+	}
+	if got := cfg.GetString("env"); got != "env-fallback" {
+		t.Fatalf("env fallback: got %q", got)
+	}
+}
+
 func TestValue_Slice(t *testing.T) {
 	sl, err := (Value{v: []any{1, "a"}}).Slice()
 	if err != nil {
