@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -65,11 +66,12 @@ func TestFromConfig_TextFormatterOptions(t *testing.T) {
 }
 
 func TestFromConfig_FileRotate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
 	opts := config.Options{
 		"logger": map[string]any{
 			"level":  "info",
 			"format": "text",
-			"output": "file:./tmp.log",
+			"output": "file:" + path,
 			"file": map[string]any{
 				"rotate": map[string]any{
 					"enabled":    true,
@@ -91,5 +93,25 @@ func TestFromConfig_FileRotate(t *testing.T) {
 
 	if _, ok := l.Out.(*lumberjack.Logger); !ok {
 		t.Fatalf("out: %T", l.Out)
+	}
+}
+
+func TestFromConfig_FileRotateValidatesOutputPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "app.log")
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"enabled": true,
+				},
+			},
+		},
+	}
+
+	if _, err := FromConfig(opts.ToConfig()); err == nil {
+		t.Fatalf("expected FromConfig to reject an unwritable rotated output path")
 	}
 }
