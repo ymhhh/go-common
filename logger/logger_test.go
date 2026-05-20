@@ -66,11 +66,12 @@ func TestFromConfig_TextFormatterOptions(t *testing.T) {
 }
 
 func TestFromConfig_FileRotate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
 	opts := config.Options{
 		"logger": map[string]any{
 			"level":  "info",
 			"format": "text",
-			"output": "file:./tmp.log",
+			"output": "file:" + path,
 			"file": map[string]any{
 				"rotate": map[string]any{
 					"enabled":    true,
