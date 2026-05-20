@@ -212,6 +212,13 @@ func openOutput(cfg Config) (io.Writer, io.Closer, error) {
 			Compress:   cfg.File.Rotate.Compress,
 			LocalTime:  cfg.File.Rotate.LocalTime,
 		}
+		f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			return nil, nil, fmt.Errorf("logger: open output file %q: %w", s, err)
+		}
+		if err := f.Close(); err != nil {
+			return nil, nil, fmt.Errorf("logger: close output file %q: %w", s, err)
+		}
 		return lj, lj, nil
 	}
 
