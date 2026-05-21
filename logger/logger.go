@@ -118,7 +118,11 @@ func New(cfg Config) (*Logger, error) {
 		cfg.Format = "text"
 	}
 	if cfg.Output == "" {
-		cfg.Output = "stderr"
+		if strings.TrimSpace(cfg.File.Path) != "" {
+			cfg.Output = "file"
+		} else {
+			cfg.Output = "stderr"
+		}
 	}
 
 	level, err := logrus.ParseLevel(strings.ToLower(cfg.Level))
