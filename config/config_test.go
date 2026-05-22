@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -192,6 +193,22 @@ obj:
 	}
 	if obj.N != 9 || obj.S != "kk" {
 		t.Fatalf("obj: %+v", obj)
+	}
+}
+
+func TestLoad_UnresolvedReferenceReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+security:
+  require_auth: ${security.default_require_auth}
+`)
+
+	_, err := Load(main)
+	if err == nil {
+		t.Fatalf("expected unresolved reference error")
+	}
+	if !strings.Contains(err.Error(), "unresolved reference: security.default_require_auth") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
