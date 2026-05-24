@@ -60,7 +60,8 @@ func TestManager_GetPrimitives_Conversions(t *testing.T) {
 func TestManager_Lists(t *testing.T) {
 	c := newTestTree(map[string]any{
 		// avoid 0/1 integers: Value.Bool treats non-zero numbers as true, which is surprising for list typing tests
-		"xs": []any{2, "3", 0, true},
+		"xs":    []any{2, "3", 0, true},
+		"empty": []any{},
 	})
 
 	if got := c.GetList("xs"); len(got) != 4 {
@@ -77,6 +78,23 @@ func TestManager_Lists(t *testing.T) {
 	}
 	if got := c.GetStringList("xs"); len(got) != 4 {
 		t.Fatalf("string list len: %d", len(got))
+	}
+
+	if got := c.GetStringList("empty"); got == nil || len(got) != 0 {
+		t.Fatalf("empty string list should be non-nil empty: %#v", got)
+	}
+	if got := c.GetBooleanList("empty"); got == nil || len(got) != 0 {
+		t.Fatalf("empty bool list should be non-nil empty: %#v", got)
+	}
+	if got := c.GetIntList("empty"); got == nil || len(got) != 0 {
+		t.Fatalf("empty int list should be non-nil empty: %#v", got)
+	}
+	if got := c.GetFloatList("empty"); got == nil || len(got) != 0 {
+		t.Fatalf("empty float list should be non-nil empty: %#v", got)
+	}
+
+	if got := c.GetStringList("missing"); got != nil {
+		t.Fatalf("missing string list should remain nil: %#v", got)
 	}
 }
 
@@ -98,6 +116,25 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 	want := (&big.Int{}).Mul(big.NewInt(2), big.NewInt(1000))
 	if bs == nil || bs.Cmp(want) != 0 {
 		t.Fatalf("bytesize: got=%v want=%v", bs, want)
+	}
+}
+
+func TestManager_GetByteSize_YAMLFloatBeyondInt64(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFile(t, dir, "config.yaml", "limit: 1.0e20\n")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	want, ok := new(big.Int).SetString("100000000000000000000", 10)
+	if !ok {
+		t.Fatal("bad expected big.Int")
+	}
+	got := cfg.GetByteSize("limit")
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("GetByteSize(limit): got=%v want=%v", got, want)
 	}
 }
 

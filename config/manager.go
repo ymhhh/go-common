@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"time"
@@ -108,7 +109,7 @@ func (c *Tree) GetList(key string) (res []any) {
 
 func (c *Tree) GetStringList(key string) []string {
 	sl := c.GetList(key)
-	if len(sl) == 0 {
+	if sl == nil {
 		return nil
 	}
 	out := make([]string, 0, len(sl))
@@ -125,7 +126,7 @@ func (c *Tree) GetStringList(key string) []string {
 
 func (c *Tree) GetBooleanList(key string) []bool {
 	sl := c.GetList(key)
-	if len(sl) == 0 {
+	if sl == nil {
 		return nil
 	}
 	out := make([]bool, 0, len(sl))
@@ -141,7 +142,7 @@ func (c *Tree) GetBooleanList(key string) []bool {
 
 func (c *Tree) GetIntList(key string) []int {
 	sl := c.GetList(key)
-	if len(sl) == 0 {
+	if sl == nil {
 		return nil
 	}
 	out := make([]int, 0, len(sl))
@@ -157,7 +158,7 @@ func (c *Tree) GetIntList(key string) []int {
 
 func (c *Tree) GetFloatList(key string) []float64 {
 	sl := c.GetList(key)
-	if len(sl) == 0 {
+	if sl == nil {
 		return nil
 	}
 	out := make([]float64, 0, len(sl))
@@ -229,7 +230,7 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 	case uint64:
 		return new(big.Int).SetUint64(x)
 	case float64:
-		return big.NewInt(int64(x))
+		return byteSizeFromFloat64(x, defValue...)
 	}
 
 	s, err := val.String()
@@ -243,6 +244,17 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 	if out == nil && len(defValue) > 0 {
 		return defValue[0]
 	}
+	return out
+}
+
+func byteSizeFromFloat64(x float64, defValue ...*big.Int) *big.Int {
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		if len(defValue) > 0 {
+			return defValue[0]
+		}
+		return nil
+	}
+	out, _ := new(big.Float).SetFloat64(x).Int(nil)
 	return out
 }
 
