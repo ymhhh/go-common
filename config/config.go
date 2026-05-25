@@ -8,8 +8,9 @@ import (
 // Tree is a loaded, mutable configuration tree.
 // It is safe for single-goroutine usage; synchronize externally if needed.
 type Tree struct {
-	root    map[string]any
-	baseDir string
+	root       map[string]any
+	baseDir    string
+	lookupRoot map[string]any
 }
 
 // Load reads a JSON/JSONC/YAML config file, processes #include, resolves ${...},
@@ -58,6 +59,13 @@ func (c *Tree) Resolve() error {
 	return resolveAll(c.root, c.lookupRef)
 }
 
+func (c *Tree) referenceRoot() map[string]any {
+	if c.lookupRoot != nil {
+		return c.lookupRoot
+	}
+	return c.root
+}
+
 func (c *Tree) decodeSubtree(path string, out any) error {
 	var v any
 	if path == "" {
@@ -77,5 +85,11 @@ func (c *Tree) lookupRef(ref string) (any, bool) {
 	if v, ok := lookupEnv(ref); ok {
 		return v, true
 	}
-	return getPath(c.root, ref)
+	if v, ok := getPath(c.root, ref); ok {
+		return v, true
+	}
+	if c.lookupRoot != nil {
+		return getPath(c.lookupRoot, ref)
+	}
+	return nil, false
 }

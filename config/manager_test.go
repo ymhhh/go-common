@@ -142,6 +142,35 @@ func TestManager_Map_Subconfig_Copy_Dump(t *testing.T) {
 	}
 }
 
+func TestManager_SubconfigResolveUsesParentRoot(t *testing.T) {
+	c := newTestTree(map[string]any{
+		"global": map[string]any{
+			"host": "db.example.com",
+		},
+		"service": map[string]any{
+			"host": "local.example.com",
+		},
+	})
+
+	sub := c.GetConfig("service")
+	if err := sub.Set("dsn", "postgres://${global.host}/app"); err != nil {
+		t.Fatalf("Set dsn: %v", err)
+	}
+	if err := sub.Set("local", "${host}"); err != nil {
+		t.Fatalf("Set local: %v", err)
+	}
+	if err := sub.Resolve(); err != nil {
+		t.Fatalf("Resolve subconfig: %v", err)
+	}
+
+	if got := c.GetString("service.dsn"); got != "postgres://db.example.com/app" {
+		t.Fatalf("service.dsn: got %q", got)
+	}
+	if got := c.GetString("service.local"); got != "local.example.com" {
+		t.Fatalf("service.local: got %q", got)
+	}
+}
+
 func TestManager_Object(t *testing.T) {
 	type obj struct {
 		N int `json:"n"`

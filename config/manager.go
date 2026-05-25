@@ -261,13 +261,13 @@ func (c *Tree) GetMap(key string) Options {
 func (c *Tree) GetConfig(key string) Config {
 	val, ok := c.GetOK(key)
 	if !ok {
-		return &Tree{root: map[string]any{}, baseDir: c.baseDir}
+		return &Tree{root: map[string]any{}, baseDir: c.baseDir, lookupRoot: c.referenceRoot()}
 	}
 	m, err := Value{v: val.Any()}.Map()
 	if err != nil {
-		return &Tree{root: map[string]any{}, baseDir: c.baseDir}
+		return &Tree{root: map[string]any{}, baseDir: c.baseDir, lookupRoot: c.referenceRoot()}
 	}
-	return &Tree{root: m, baseDir: c.baseDir}
+	return &Tree{root: m, baseDir: c.baseDir, lookupRoot: c.referenceRoot()}
 }
 
 func (c *Tree) GetValuesConfig(key string) Config {
@@ -279,7 +279,7 @@ func (c *Tree) GetValuesConfig(key string) Config {
 	if !ok {
 		panic(fmt.Sprintf("config: %q is not a map[string]any (got %T)", key, v))
 	}
-	return &Tree{root: m, baseDir: c.baseDir}
+	return &Tree{root: m, baseDir: c.baseDir, lookupRoot: c.referenceRoot()}
 }
 
 func (c *Tree) SetKeyValue(key string, value any) error {
@@ -303,9 +303,14 @@ func (c *Tree) GetRootKeys() []string {
 }
 
 func (c *Tree) Copy() Config {
+	var lookupRoot map[string]any
+	if c.lookupRoot != nil {
+		lookupRoot = DeepCopy(c.lookupRoot).(map[string]any)
+	}
 	return &Tree{
-		root:    DeepCopy(c.root).(map[string]any),
-		baseDir: c.baseDir,
+		root:       DeepCopy(c.root).(map[string]any),
+		baseDir:    c.baseDir,
+		lookupRoot: lookupRoot,
 	}
 }
 
