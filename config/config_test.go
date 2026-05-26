@@ -195,6 +195,31 @@ obj:
 	}
 }
 
+func TestLoad_YAML_CompositeReferenceIsDeepCopied(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+base:
+  nested:
+    timeout: 1s
+derived: ${base}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if err := cfg.Set("derived.nested.timeout", "2s"); err != nil {
+		t.Fatalf("Set derived timeout: %v", err)
+	}
+	if got := cfg.GetString("base.nested.timeout"); got != "1s" {
+		t.Fatalf("base nested timeout changed through derived alias: got %q", got)
+	}
+	if got := cfg.GetString("derived.nested.timeout"); got != "2s" {
+		t.Fatalf("derived nested timeout: got %q", got)
+	}
+}
+
 func TestValue_Slice(t *testing.T) {
 	sl, err := (Value{v: []any{1, "a"}}).Slice()
 	if err != nil {
