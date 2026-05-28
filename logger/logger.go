@@ -47,6 +47,9 @@ type Config struct {
 			MaxAgeDays int  `json:"maxAgeDays" yaml:"maxAgeDays"` // default 7
 			Compress   bool `json:"compress" yaml:"compress"`
 			LocalTime  bool `json:"localTime" yaml:"localTime"`
+
+			maxBackupsSet bool
+			maxAgeDaysSet bool
 		} `json:"rotate" yaml:"rotate"`
 	} `json:"file" yaml:"file"`
 
@@ -103,7 +106,27 @@ func FromConfig(c config.Config, path ...string) (*Logger, error) {
 			return nil, err
 		}
 	}
+	markRotateRetentionFields(c, p, &cfg)
 	return New(cfg)
+}
+
+func markRotateRetentionFields(c config.Config, path string, cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	if _, ok := c.GetOK(joinConfigPath(path, "file.rotate.maxBackups")); ok {
+		cfg.File.Rotate.maxBackupsSet = true
+	}
+	if _, ok := c.GetOK(joinConfigPath(path, "file.rotate.maxAgeDays")); ok {
+		cfg.File.Rotate.maxAgeDaysSet = true
+	}
+}
+
+func joinConfigPath(root, key string) string {
+	if strings.TrimSpace(root) == "" {
+		return key
+	}
+	return root + "." + key
 }
 
 // New constructs a new configured logger.
@@ -197,11 +220,11 @@ func openOutput(cfg Config) (io.Writer, io.Closer, error) {
 			maxSize = 100
 		}
 		maxBackups := cfg.File.Rotate.MaxBackups
-		if maxBackups <= 0 {
+		if maxBackups < 0 || (maxBackups == 0 && !cfg.File.Rotate.maxBackupsSet) {
 			maxBackups = 7
 		}
 		maxAge := cfg.File.Rotate.MaxAgeDays
-		if maxAge <= 0 {
+		if maxAge < 0 || (maxAge == 0 && !cfg.File.Rotate.maxAgeDaysSet) {
 			maxAge = 7
 		}
 		lj := &lumberjack.Logger{

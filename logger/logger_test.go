@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -91,5 +92,38 @@ func TestFromConfig_FileRotate(t *testing.T) {
 
 	if _, ok := l.Out.(*lumberjack.Logger); !ok {
 		t.Fatalf("out: %T", l.Out)
+	}
+}
+
+func TestFromConfig_FileRotatePreservesUnlimitedRetention(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"enabled":    true,
+					"maxBackups": 0,
+					"maxAgeDays": 0,
+				},
+			},
+		},
+	}
+	c := opts.ToConfig()
+
+	l, err := FromConfig(c)
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	lj, ok := l.Out.(*lumberjack.Logger)
+	if !ok {
+		t.Fatalf("out: %T", l.Out)
+	}
+	if lj.MaxBackups != 0 || lj.MaxAge != 0 {
+		t.Fatalf("retention limits: MaxBackups=%d MaxAge=%d, want unlimited zeros", lj.MaxBackups, lj.MaxAge)
 	}
 }
