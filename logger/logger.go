@@ -34,6 +34,7 @@ type Config struct {
 	Format       string `json:"format" yaml:"format"` // text|json
 	Output       string `json:"output" yaml:"output"` // stdout|stderr|discard|path|file:path
 	ReportCaller bool   `json:"reportCaller" yaml:"reportCaller"`
+	baseDir      string
 
 	File struct {
 		// Path is used when Output is "file" or empty but File.Path is set.
@@ -102,6 +103,9 @@ func FromConfig(c config.Config, path ...string) (*Logger, error) {
 		if err := c.Object(&cfg, config.WithObjectPath(p)); err != nil {
 			return nil, err
 		}
+	}
+	if bc, ok := c.(interface{ BaseDir() string }); ok {
+		cfg.baseDir = bc.BaseDir()
 	}
 	return New(cfg)
 }
@@ -180,7 +184,9 @@ func openOutput(cfg Config) (io.Writer, io.Closer, error) {
 	}
 
 	if !filepath.IsAbs(s) {
-		if wd, err := os.Getwd(); err == nil {
+		if cfg.baseDir != "" {
+			s = filepath.Join(cfg.baseDir, s)
+		} else if wd, err := os.Getwd(); err == nil {
 			s = filepath.Join(wd, s)
 		}
 	}

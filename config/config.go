@@ -58,6 +58,14 @@ func (c *Tree) Resolve() error {
 	return resolveAll(c.root, c.lookupRef)
 }
 
+// BaseDir returns the directory of the loaded config file, when known.
+func (c *Tree) BaseDir() string {
+	if c == nil {
+		return ""
+	}
+	return c.baseDir
+}
+
 func (c *Tree) decodeSubtree(path string, out any) error {
 	var v any
 	if path == "" {
