@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,6 +30,11 @@ type Secret string
 // String implements the fmt.Stringer interface for Secret.
 func (p Secret) String() string {
 	return Hidden
+}
+
+// GoString implements fmt.GoStringer so %#v formatting does not expose secrets.
+func (p Secret) GoString() string {
+	return "types.Secret(" + strconv.Quote(Hidden) + ")"
 }
 
 // Set implements flag.Value

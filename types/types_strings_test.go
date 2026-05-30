@@ -3,6 +3,8 @@ package types
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -12,6 +14,24 @@ func TestSecret_StringRedacts(t *testing.T) {
 	s := Secret("super-secret")
 	if s.String() != Hidden {
 		t.Fatalf("String: got %q want %q", s.String(), Hidden)
+	}
+}
+
+func TestSecret_GoStringRedacts(t *testing.T) {
+	s := Secret("super-secret")
+	got := fmt.Sprintf("%#v", s)
+	if got != `types.Secret("<hidden>")` {
+		t.Fatalf("GoString: got %q", got)
+	}
+	if got == `types.Secret("super-secret")` {
+		t.Fatal("GoString exposed the secret value")
+	}
+
+	container := fmt.Sprintf("%#v", struct {
+		Token Secret
+	}{Token: s})
+	if strings.Contains(container, "super-secret") {
+		t.Fatal("container GoString exposed the secret value")
 	}
 }
 
