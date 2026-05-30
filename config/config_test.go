@@ -91,6 +91,13 @@ a:
 		t.Fatalf("x.y.z: got %d", got)
 	}
 
+	if err := cfg.Set("a.b.c.leaf", 10); err == nil {
+		t.Fatalf("Set through non-object: expected error")
+	}
+	if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
+		t.Fatalf("a.b.c should remain unchanged after failed Set: got %d", got)
+	}
+
 	// Object
 	var obj demoObj
 	if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
