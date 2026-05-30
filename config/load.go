@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,15 +98,33 @@ func parseJSON(raw []byte) (map[string]any, error) {
 }
 
 func parseYAML(raw []byte) (map[string]any, error) {
-	var v any
-	if err := yaml.Unmarshal(raw, &v); err != nil {
-		return nil, err
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
+	merged := map[string]any{}
+	seenDoc := false
+
+	for {
+		var v any
+		if err := dec.Decode(&v); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if v == nil {
+			continue
+		}
+		m, ok := normalize(v).(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("config: yaml root must be map/object")
+		}
+		seenDoc = true
+		merged = deepMerge(merged, m)
 	}
-	m, ok := normalize(v).(map[string]any)
-	if !ok {
+
+	if !seenDoc {
 		return nil, fmt.Errorf("config: yaml root must be map/object")
 	}
-	return m, nil
+	return merged, nil
 }
 
 func normalize(v any) any {

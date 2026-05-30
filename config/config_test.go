@@ -214,6 +214,36 @@ obj:
 	}
 }
 
+func TestLoad_YAML_MultipleDocumentsMerged(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+a:
+  b:
+    keep: base
+    override: old
+---
+a:
+  b:
+    override: new
+    added: value
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if got := cfg.GetString("a.b.keep"); got != "base" {
+		t.Fatalf("a.b.keep: got %q", got)
+	}
+	if got := cfg.GetString("a.b.override"); got != "new" {
+		t.Fatalf("a.b.override: got %q", got)
+	}
+	if got := cfg.GetString("a.b.added"); got != "value" {
+		t.Fatalf("a.b.added: got %q", got)
+	}
+}
+
 func TestValue_Slice(t *testing.T) {
 	sl, err := (Value{v: []any{1, "a"}}).Slice()
 	if err != nil {
