@@ -36,6 +36,18 @@ func TestParseStringByteSize(t *testing.T) {
 		t.Fatalf("3mib: got=%v want=%v", got, want)
 	}
 
+	got = ParseStringByteSize("1.5kb")
+	want = big.NewInt(1500)
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("1.5kb: got=%v want=%v", got, want)
+	}
+
+	got = ParseStringByteSize("1.5kib")
+	want = big.NewInt(1536)
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("1.5kib: got=%v want=%v", got, want)
+	}
+
 	// default when not matched
 	def := big.NewInt(99)
 	got = ParseStringByteSize("bad", def)
@@ -58,6 +70,12 @@ func TestParseStringTime(t *testing.T) {
 	}
 	if got := ParseStringTime("4h"); got != 4*time.Hour {
 		t.Fatalf("4h: got %v", got)
+	}
+	if got := ParseStringTime("1.5s"); got != 1500*time.Millisecond {
+		t.Fatalf("1.5s: got %v", got)
+	}
+	if got := ParseStringTime("0.5d"); got != 12*time.Hour {
+		t.Fatalf("0.5d: got %v", got)
 	}
 
 	// default when not matched

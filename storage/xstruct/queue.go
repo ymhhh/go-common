@@ -1,6 +1,7 @@
 package xstruct
 
 import (
+	"runtime"
 	"sync/atomic"
 )
 
@@ -21,8 +22,23 @@ func NewQueue[T any]() *Queue[T] {
 	return q
 }
 
+func (q *Queue[T]) init() {
+	if q.tail.Load() != nil {
+		return
+	}
+	dummy := &node[T]{}
+	if q.head.CompareAndSwap(nil, dummy) {
+		q.tail.Store(dummy)
+		return
+	}
+	for q.tail.Load() == nil {
+		runtime.Gosched()
+	}
+}
+
 // Enqueue adds v to the tail of the queue.
 func (q *Queue[T]) Enqueue(v T) {
+	q.init()
 	n := &node[T]{value: v}
 	for {
 		tail := q.tail.Load()
@@ -41,6 +57,7 @@ func (q *Queue[T]) Enqueue(v T) {
 // Dequeue removes and returns the front element.
 // If the queue is empty, ok is false.
 func (q *Queue[T]) Dequeue() (v T, ok bool) {
+	q.init()
 	for {
 		head := q.head.Load()
 		tail := q.tail.Load()

@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -65,54 +66,63 @@ func FindStringSubmatchMap(s, exp string) (map[string]string, bool) {
 func ParseStringByteSize(key string, defValue ...*big.Int) *big.Int {
 	groups, matched := FindStringSubmatchMap(key, bitReg)
 	if !matched {
-		if len(defValue) == 0 {
-			return nil
-		}
-		return defValue[0]
+		return defaultByteSize(defValue...)
 	}
-	i, _ := ToInt64(groups["value"])
 
 	switch groups["unit"] {
 	case "b", "byte", "bytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _Byte)
+		return parseByteSizeValue(groups["value"], _Byte, defValue...)
 	case "kb", "kilobyte", "kilobytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _KByte)
+		return parseByteSizeValue(groups["value"], _KByte, defValue...)
 	case "mb", "megabyte", "megabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _MByte)
+		return parseByteSizeValue(groups["value"], _MByte, defValue...)
 	case "gb", "gigabyte", "gigabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _GByte)
+		return parseByteSizeValue(groups["value"], _GByte, defValue...)
 	case "tb", "terabyte", "terabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _TByte)
+		return parseByteSizeValue(groups["value"], _TByte, defValue...)
 	case "pb", "petabyte", "petabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _PByte)
+		return parseByteSizeValue(groups["value"], _PByte, defValue...)
 	case "eb", "exabyte", "exabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _EByte)
+		return parseByteSizeValue(groups["value"], _EByte, defValue...)
 	case "zb", "zettabyte", "zettabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _ZByte)
+		return parseByteSizeValue(groups["value"], _ZByte, defValue...)
 	case "yb", "yottabyte", "yottabytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _YByte)
+		return parseByteSizeValue(groups["value"], _YByte, defValue...)
 	case "k", "ki", "kib", "kibibyte", "kibibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _KiByte)
+		return parseByteSizeValue(groups["value"], _KiByte, defValue...)
 	case "m", "mi", "mib", "mebibyte", "mebibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _MiByte)
+		return parseByteSizeValue(groups["value"], _MiByte, defValue...)
 	case "g", "gi", "gib", "gibibyte", "gibibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _GiByte)
+		return parseByteSizeValue(groups["value"], _GiByte, defValue...)
 	case "t", "ti", "tib", "tebibyte", "tebibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _TiByte)
+		return parseByteSizeValue(groups["value"], _TiByte, defValue...)
 	case "p", "pi", "pib", "pebibyte", "pebibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _PiByte)
+		return parseByteSizeValue(groups["value"], _PiByte, defValue...)
 	case "e", "ei", "eib", "exbibyte", "exbibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _EiByte)
+		return parseByteSizeValue(groups["value"], _EiByte, defValue...)
 	case "z", "zi", "zib", "zebibyte", "zebibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _ZiByte)
+		return parseByteSizeValue(groups["value"], _ZiByte, defValue...)
 	case "y", "yi", "yib", "yobibyte", "yobibytes":
-		return (&big.Int{}).Mul(big.NewInt(i), _YiByte)
+		return parseByteSizeValue(groups["value"], _YiByte, defValue...)
 	default:
-		if len(defValue) == 0 {
-			return nil
-		}
-		return defValue[0]
+		return defaultByteSize(defValue...)
 	}
+}
+
+func defaultByteSize(defValue ...*big.Int) *big.Int {
+	if len(defValue) == 0 {
+		return nil
+	}
+	return defValue[0]
+}
+
+func parseByteSizeValue(value string, unit *big.Int, defValue ...*big.Int) *big.Int {
+	r, ok := new(big.Rat).SetString(value)
+	if !ok {
+		return defaultByteSize(defValue...)
+	}
+	r.Mul(r, new(big.Rat).SetInt(unit))
+	return new(big.Int).Quo(r.Num(), r.Denom())
 }
 
 // ParseStringTime return time.Duration
@@ -126,27 +136,33 @@ func ParseStringTime(s string, defValue ...time.Duration) time.Duration {
 		return defValue[0]
 	}
 
-	i, _ := ToInt64(groups["value"])
+	f, err := strconv.ParseFloat(groups["value"], 64)
+	if err != nil {
+		if len(defValue) == 0 {
+			return 0
+		}
+		return defValue[0]
+	}
 
 	switch groups["unit"] {
 	case "nanoseconds", "nanosecond", "nanos", "nano", "ns":
-		return time.Nanosecond * time.Duration(i)
+		return time.Duration(float64(time.Nanosecond) * f)
 	case "microseconds", "microsecond", "micros", "micro", "us":
-		return time.Microsecond * time.Duration(i)
+		return time.Duration(float64(time.Microsecond) * f)
 	case "milliseconds", "millisecond", "millis", "milli", "ms":
-		return time.Millisecond * time.Duration(i)
+		return time.Duration(float64(time.Millisecond) * f)
 	case "seconds", "second", "s":
-		return time.Second * time.Duration(i)
+		return time.Duration(float64(time.Second) * f)
 	case "minutes", "minute", "m":
-		return time.Minute * time.Duration(i)
+		return time.Duration(float64(time.Minute) * f)
 	case "hours", "hour", "h":
-		return time.Hour * time.Duration(i)
+		return time.Duration(float64(time.Hour) * f)
 	case "days", "day", "d":
-		return time.Hour * 24 * time.Duration(i)
+		return time.Duration(float64(time.Hour*24) * f)
 	case "weeks", "week", "w":
-		return time.Hour * 24 * 7 * time.Duration(i)
+		return time.Duration(float64(time.Hour*24*7) * f)
 	case "years", "year", "y":
-		return time.Hour * 24 * 365 * time.Duration(i)
+		return time.Duration(float64(time.Hour*24*365) * f)
 	default:
 		if len(defValue) == 0 {
 			return 0

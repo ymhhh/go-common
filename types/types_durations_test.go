@@ -46,6 +46,22 @@ func TestDuration_YAML(t *testing.T) {
 		t.Fatalf("unmarshal str: got %v", c.D.Duration())
 	}
 
+	var cFrac cfg
+	if err := yaml.Unmarshal([]byte("d: 1.5s\n"), &cFrac); err != nil {
+		t.Fatalf("unmarshal fractional str: %v", err)
+	}
+	if cFrac.D.Duration() != 1500*time.Millisecond {
+		t.Fatalf("unmarshal fractional str: got %v", cFrac.D.Duration())
+	}
+
+	var cCompound cfg
+	if err := yaml.Unmarshal([]byte("d: 1h30m\n"), &cCompound); err != nil {
+		t.Fatalf("unmarshal compound str: %v", err)
+	}
+	if cCompound.D.Duration() != 90*time.Minute {
+		t.Fatalf("unmarshal compound str: got %v", cCompound.D.Duration())
+	}
+
 	// Unmarshal int (nanoseconds)
 	var c2 cfg
 	if err := yaml.Unmarshal([]byte("d: 1000000\n"), &c2); err != nil {
@@ -67,5 +83,8 @@ func TestDuration_YAML(t *testing.T) {
 	if round.D.Duration() != 1500*time.Millisecond {
 		t.Fatalf("roundtrip: got %v", round.D.Duration())
 	}
-}
 
+	if err := yaml.Unmarshal([]byte("d: definitely-not-a-duration\n"), &cfg{}); err == nil {
+		t.Fatalf("expected invalid duration error")
+	}
+}

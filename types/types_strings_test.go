@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"flag"
 	"testing"
 
@@ -59,6 +60,32 @@ func TestSecret_YAML(t *testing.T) {
 	}
 	if round.S.String() != Hidden {
 		t.Fatalf("String after unmarshal: got %q", round.S.String())
+	}
+}
+
+func TestSecret_JSON(t *testing.T) {
+	type cfg struct {
+		S Secret `json:"s"`
+	}
+
+	out, err := json.Marshal(cfg{S: Secret("real-secret-value")})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var m map[string]string
+	if err := json.Unmarshal(out, &m); err != nil {
+		t.Fatalf("unmarshal marshal output: %v", err)
+	}
+	if got := m["s"]; got != Hidden {
+		t.Fatalf("marshal emitted field s=%v want %q", got, Hidden)
+	}
+
+	var round cfg
+	if err := json.Unmarshal([]byte(`{"s":"real-secret-value"}`), &round); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if string(round.S) != "real-secret-value" {
+		t.Fatalf("unmarshal value: got %q", string(round.S))
 	}
 }
 

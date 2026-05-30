@@ -1,8 +1,10 @@
 package config
 
+import "fmt"
+
 // stripJSONComments removes // and /* */ comments from JSON-like content, while
 // preserving string literals and escaped quotes.
-func stripJSONComments(in []byte) []byte {
+func stripJSONComments(in []byte) ([]byte, error) {
 	out := make([]byte, 0, len(in))
 
 	inStr := false
@@ -50,14 +52,15 @@ func stripJSONComments(in []byte) []byte {
 			for i+1 < len(in) && !(in[i] == '*' && in[i+1] == '/') {
 				i++
 			}
-			if i+1 < len(in) {
-				i++ // skip '/'
+			if i+1 >= len(in) {
+				return nil, fmt.Errorf("config: unterminated JSON block comment")
 			}
+			i++ // skip '/'
 			continue
 		}
 
 		out = append(out, c)
 	}
 
-	return out
+	return out, nil
 }
