@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"math/big"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -98,6 +100,39 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 	want := (&big.Int{}).Mul(big.NewInt(2), big.NewInt(1000))
 	if bs == nil || bs.Cmp(want) != 0 {
 		t.Fatalf("bytesize: got=%v want=%v", bs, want)
+	}
+}
+
+func TestManager_GetByteSize_JSONNumber(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	if err := os.WriteFile(path, []byte(`{
+		"limit": 1048576,
+		"huge_limit": 9223372036854775808,
+		"exponent_limit": 1e6
+	}`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if got, want := c.GetByteSize("limit"), big.NewInt(1048576); got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("limit: got=%v want=%v", got, want)
+	}
+
+	hugeWant, ok := new(big.Int).SetString("9223372036854775808", 10)
+	if !ok {
+		t.Fatalf("invalid huge test value")
+	}
+	if got := c.GetByteSize("huge_limit"); got == nil || got.Cmp(hugeWant) != 0 {
+		t.Fatalf("huge_limit: got=%v want=%v", got, hugeWant)
+	}
+
+	if got, want := c.GetByteSize("exponent_limit"), big.NewInt(1_000_000); got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("exponent_limit: got=%v want=%v", got, want)
 	}
 }
 
