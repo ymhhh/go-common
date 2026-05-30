@@ -103,11 +103,19 @@ func FromConfig(c config.Config, path ...string) (*Logger, error) {
 			return nil, err
 		}
 	}
-	return New(cfg)
+	baseDir := ""
+	if bc, ok := c.(interface{ BaseDir() string }); ok {
+		baseDir = bc.BaseDir()
+	}
+	return newWithBaseDir(cfg, baseDir)
 }
 
 // New constructs a new configured logger.
 func New(cfg Config) (*Logger, error) {
+	return newWithBaseDir(cfg, "")
+}
+
+func newWithBaseDir(cfg Config, baseDir string) (*Logger, error) {
 	l := logrus.New()
 
 	// defaults
@@ -142,7 +150,7 @@ func New(cfg Config) (*Logger, error) {
 		return nil, fmt.Errorf("logger: unsupported format: %q", cfg.Format)
 	}
 
-	out, closer, err := openOutput(cfg)
+	out, closer, err := openOutput(cfg, baseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +159,7 @@ func New(cfg Config) (*Logger, error) {
 	return &Logger{Logger: l, closer: closer}, nil
 }
 
-func openOutput(cfg Config) (io.Writer, io.Closer, error) {
+func openOutput(cfg Config, baseDir string) (io.Writer, io.Closer, error) {
 	s := strings.TrimSpace(cfg.Output)
 	if s == "" || strings.EqualFold(s, "stderr") {
 		return os.Stderr, nil, nil
@@ -180,7 +188,9 @@ func openOutput(cfg Config) (io.Writer, io.Closer, error) {
 	}
 
 	if !filepath.IsAbs(s) {
-		if wd, err := os.Getwd(); err == nil {
+		if baseDir != "" {
+			s = filepath.Join(baseDir, s)
+		} else if wd, err := os.Getwd(); err == nil {
 			s = filepath.Join(wd, s)
 		}
 	}
