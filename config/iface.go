@@ -43,6 +43,10 @@ type Config interface {
 	GetMap(key string) Options
 	// GetConfig get key's config
 	GetConfig(key string) Config
+	// ToObject unmarshal values to object.
+	//
+	// Deprecated: use Object(model, WithObjectPath(key)).
+	ToObject(key string, model any) error
 	// Object unmarshal values to object
 	Object(model any, opts ...ObjOption) error
 	// GetValuesConfig get key's values if values can be Config, or panic

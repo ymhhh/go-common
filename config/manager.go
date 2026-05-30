@@ -313,6 +313,13 @@ func (c *Tree) IsEmpty() bool {
 	return len(c.root) == 0
 }
 
+// ToObject deserializes config subtree at key into model.
+//
+// Deprecated: use Object(model, WithObjectPath(key)).
+func (c *Tree) ToObject(key string, model any) error {
+	return c.decodeSubtree(key, model)
+}
+
 func (c *Tree) Object(model any, opts ...ObjOption) error {
 	var oo objectOpts
 	for _, opt := range opts {
