@@ -36,6 +36,7 @@ func InitGlobal(c config.Config, path ...string) error {
 		old.SetFormatter(l.Formatter)
 		old.SetOutput(l.Out)
 		old.closer = l.closer
+		old.closeOnce = sync.Once{}
 	}
 	globalMu.Unlock()
 
