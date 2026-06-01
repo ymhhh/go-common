@@ -15,20 +15,32 @@ var (
 
 // InitGlobal initializes the global logger from config.
 // By default it reads the "logger" subtree; you may pass an optional subtree path.
-// It closes the previous global logger if it owned a resource (file output).
+// Existing entries returned by L keep using the same underlying logger after a
+// reload, so they continue writing to the current output.
 func InitGlobal(c config.Config, path ...string) error {
 	l, err := FromConfig(c, path...)
 	if err != nil {
 		return err
 	}
 
+	var oldCloser interface{ Close() error }
+
 	globalMu.Lock()
 	old := global
-	global = l
+	if old == nil {
+		global = l
+	} else {
+		oldCloser = old.closer
+		old.SetLevel(l.Level)
+		old.SetReportCaller(l.ReportCaller)
+		old.SetFormatter(l.Formatter)
+		old.SetOutput(l.Out)
+		old.closer = l.closer
+	}
 	globalMu.Unlock()
 
-	if old != nil {
-		_ = old.Close()
+	if oldCloser != nil {
+		_ = oldCloser.Close()
 	}
 	return nil
 }

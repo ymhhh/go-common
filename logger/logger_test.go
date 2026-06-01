@@ -184,3 +184,61 @@ logger:
 		t.Fatalf("log file missing message: %q", string(b))
 	}
 }
+
+func TestInitGlobal_ReusesLoggerAcrossReload(t *testing.T) {
+	resetGlobal := func() {
+		globalMu.Lock()
+		l := global
+		global = nil
+		globalMu.Unlock()
+		if l != nil {
+			_ = l.Close()
+		}
+	}
+	resetGlobal()
+	t.Cleanup(resetGlobal)
+
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.log")
+	secondPath := filepath.Join(dir, "second.log")
+	configForPath := func(path string) config.Config {
+		opts := config.Options{
+			"logger": map[string]any{
+				"level":  "info",
+				"format": "text",
+				"output": "file:" + path,
+			},
+		}
+		return opts.ToConfig()
+	}
+
+	if err := InitGlobal(configForPath(firstPath)); err != nil {
+		t.Fatalf("InitGlobal first: %v", err)
+	}
+	entry := L().WithField("component", "worker")
+	entry.Info("before reload")
+
+	if err := InitGlobal(configForPath(secondPath)); err != nil {
+		t.Fatalf("InitGlobal second: %v", err)
+	}
+	entry.Info("after reload from cached entry")
+	L().Info("after reload from fresh entry")
+
+	globalMu.RLock()
+	l := global
+	globalMu.RUnlock()
+	if err := l.Close(); err != nil {
+		t.Fatalf("Close global: %v", err)
+	}
+
+	secondLog, err := os.ReadFile(secondPath)
+	if err != nil {
+		t.Fatalf("read second log: %v", err)
+	}
+	if !strings.Contains(string(secondLog), "after reload from cached entry") {
+		t.Fatalf("cached entry did not write to reloaded global logger: %q", string(secondLog))
+	}
+	if !strings.Contains(string(secondLog), "after reload from fresh entry") {
+		t.Fatalf("fresh entry missing from second log: %q", string(secondLog))
+	}
+}
