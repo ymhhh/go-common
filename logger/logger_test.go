@@ -99,11 +99,12 @@ func TestFromConfig_FilePathWithoutOutputUsesFile(t *testing.T) {
 }
 
 func TestFromConfig_FileRotate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tmp.log")
 	opts := config.Options{
 		"logger": map[string]any{
 			"level":  "info",
 			"format": "text",
-			"output": "file:./tmp.log",
+			"output": "file:" + path,
 			"file": map[string]any{
 				"rotate": map[string]any{
 					"enabled":    true,
@@ -125,6 +126,29 @@ func TestFromConfig_FileRotate(t *testing.T) {
 
 	if _, ok := l.Out.(*lumberjack.Logger); !ok {
 		t.Fatalf("out: %T", l.Out)
+	}
+}
+
+func TestFromConfig_FileRotateValidatesOutputPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "app.log")
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"enabled": true,
+				},
+			},
+		},
+	}
+	c := opts.ToConfig()
+
+	l, err := FromConfig(c)
+	if err == nil {
+		defer func() { _ = l.Close() }()
+		t.Fatal("FromConfig succeeded for rotated output with missing parent directory")
 	}
 }
 
