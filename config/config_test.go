@@ -244,6 +244,49 @@ a:
 	}
 }
 
+func TestLoad_YAML_CompositeReferenceIsDeepCopied(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+base:
+  host: db.internal
+  limits:
+    retries: 3
+derived: ${base}
+items:
+  - alpha
+  - beta
+itemsCopy: ${items}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if err := cfg.Set("derived.host", "db.override"); err != nil {
+		t.Fatalf("Set derived.host: %v", err)
+	}
+	if got := cfg.GetString("base.host"); got != "db.internal" {
+		t.Fatalf("base.host should not change after mutating derived: got %q", got)
+	}
+
+	derived := cfg.GetMap("derived")
+	derivedLimits, ok := derived["limits"].(map[string]any)
+	if !ok {
+		t.Fatalf("derived.limits: got %T", derived["limits"])
+	}
+	derivedLimits["retries"] = 5
+	if got := cfg.GetInt("base.limits.retries"); got != 3 {
+		t.Fatalf("base.limits.retries should not change after mutating derived: got %d", got)
+	}
+
+	itemsCopy := cfg.GetList("itemsCopy")
+	itemsCopy[0] = "changed"
+	if got := cfg.GetStringList("items")[0]; got != "alpha" {
+		t.Fatalf("items should not change after mutating itemsCopy: got %q", got)
+	}
+}
+
 func TestValue_Slice(t *testing.T) {
 	sl, err := (Value{v: []any{1, "a"}}).Slice()
 	if err != nil {
