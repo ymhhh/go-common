@@ -287,6 +287,38 @@ itemsCopy: ${items}
 	}
 }
 
+func TestResolve_CompositeReferenceCopiesProgrammaticMutableValues(t *testing.T) {
+	opts := Options{
+		"typedMap":      map[string]string{"host": "db.internal"},
+		"typedMapCopy":  "${typedMap}",
+		"typedList":     []string{"alpha", "beta"},
+		"typedListCopy": "${typedList}",
+	}
+	cfg := (&opts).ToConfig()
+
+	if err := cfg.Resolve(); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	typedMapCopy, ok := cfg.Get("typedMapCopy").Any().(map[string]string)
+	if !ok {
+		t.Fatalf("typedMapCopy: got %T", cfg.Get("typedMapCopy").Any())
+	}
+	typedMapCopy["host"] = "db.override"
+	if got := cfg.Get("typedMap").Any().(map[string]string)["host"]; got != "db.internal" {
+		t.Fatalf("typedMap should not change after mutating typedMapCopy: got %q", got)
+	}
+
+	typedListCopy, ok := cfg.Get("typedListCopy").Any().([]string)
+	if !ok {
+		t.Fatalf("typedListCopy: got %T", cfg.Get("typedListCopy").Any())
+	}
+	typedListCopy[0] = "changed"
+	if got := cfg.Get("typedList").Any().([]string)[0]; got != "alpha" {
+		t.Fatalf("typedList should not change after mutating typedListCopy: got %q", got)
+	}
+}
+
 func TestValue_Slice(t *testing.T) {
 	sl, err := (Value{v: []any{1, "a"}}).Slice()
 	if err != nil {

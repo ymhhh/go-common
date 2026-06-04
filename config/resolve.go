@@ -124,6 +124,9 @@ func resolveRefValue(ref string, lookup refLookup, visiting map[string]bool) (an
 		}
 		return DeepCopy(v), nil
 	default:
+		if isMutableComposite(v) {
+			return DeepCopy(v), nil
+		}
 		return v, nil
 	}
 }
