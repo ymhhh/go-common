@@ -77,7 +77,7 @@ func (t ErrorCodeTmpl) New(opts ...Option) ErrorCode {
 	if len(probe.errs) == 0 && t.message != "" {
 		base = append(base, WithErrs(errors.New(t.message)))
 	}
-	opts = append(opts, base...)
+	opts = append(base, opts...)
 	return NewCode(opts...)
 }
 
