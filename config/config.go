@@ -38,23 +38,35 @@ func Load(path string) (Config, error) {
 
 // Get returns a typed Value for a dot path like "a.b.c".
 func (c *Tree) Get(path string) Value {
+	if c == nil {
+		return Value{}
+	}
 	v, _ := getPath(c.root, path)
 	return Value{v: v}
 }
 
 // GetOK returns the Value and whether the path exists.
 func (c *Tree) GetOK(path string) (Value, bool) {
+	if c == nil {
+		return Value{}, false
+	}
 	v, ok := getPath(c.root, path)
 	return Value{v: v}, ok
 }
 
 // Set updates a dot path like "a.b.c". Intermediate objects are created as maps.
 func (c *Tree) Set(path string, value any) error {
+	if c == nil {
+		return fmt.Errorf("config: Set called on nil Tree")
+	}
 	return setPath(c.root, path, value)
 }
 
 // Resolve resolves ${ENV} and ${a.b.c} references in-place.
 func (c *Tree) Resolve() error {
+	if c == nil {
+		return fmt.Errorf("config: Resolve called on nil Tree")
+	}
 	return resolveAll(c.root, c.lookupRef)
 }
 
