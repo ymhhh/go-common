@@ -107,11 +107,7 @@ func resolveRefValue(ref string, lookup refLookup, visiting map[string]bool) (an
 
 	v, ok := lookup(ref)
 	if !ok {
-		// For env-style placeholders, allow missing to resolve to empty string.
-		// This is a pragmatic default for config templates.
-		if _, envOk := os.LookupEnv(ref); !envOk {
-			return "", nil
-		}
+		return "", nil
 	}
 
 	// If the referenced value itself contains references, resolve it recursively.
