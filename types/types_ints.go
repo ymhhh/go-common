@@ -12,22 +12,38 @@ func ToInt64(value any) (int64, error) {
 	if value == nil {
 		return 0, nil
 	}
-	var val string
-	switch reflect.TypeOf(value).Kind() {
-	case reflect.Int8, reflect.Int16, reflect.Int, reflect.Int32, reflect.Int64:
-		val = fmt.Sprintf("%d", value)
-	case reflect.String:
-		switch reflect.TypeOf(value).String() {
-		case "json.Number":
-			return value.(json.Number).Int64()
-		default:
-			val = value.(string)
-		}
+	switch v := value.(type) {
+	case int:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case int32:
+		return int64(v), nil
+	case int16:
+		return int64(v), nil
+	case int8:
+		return int64(v), nil
+	case uint:
+		return int64(v), nil
+	case uint64:
+		return int64(v), nil
+	case uint32:
+		return int64(v), nil
+	case uint16:
+		return int64(v), nil
+	case uint8:
+		return int64(v), nil
+	case float64:
+		return int64(v), nil
+	case float32:
+		return int64(v), nil
+	case json.Number:
+		return v.Int64()
+	case string:
+		return strconv.ParseInt(v, 10, 64)
 	default:
 		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
 	}
-
-	return strconv.ParseInt(val, 10, 64)
 }
 
 // ToInt parse value to int
@@ -35,21 +51,37 @@ func ToInt(value any) (int, error) {
 	if value == nil {
 		return 0, nil
 	}
-
-	var val string
-	switch reflect.TypeOf(value).Kind() {
-	case reflect.Int8, reflect.Int16, reflect.Int, reflect.Int32, reflect.Int64:
-		val = fmt.Sprintf("%d", value)
-	case reflect.String:
-		switch reflect.TypeOf(value).String() {
-		case "json.Number":
-			val = value.(json.Number).String()
-		default:
-			val = value.(string)
-		}
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case int64:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case int16:
+		return int(v), nil
+	case int8:
+		return int(v), nil
+	case uint:
+		return int(v), nil
+	case uint64:
+		return int(v), nil
+	case uint32:
+		return int(v), nil
+	case uint16:
+		return int(v), nil
+	case uint8:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	case float32:
+		return int(v), nil
+	case json.Number:
+		i, err := v.Int64()
+		return int(i), err
+	case string:
+		return strconv.Atoi(v)
 	default:
 		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
 	}
-
-	return strconv.Atoi(val)
 }
