@@ -228,19 +228,28 @@ func (e *Error) Causes() []error {
 }
 
 func (e *Error) Error() string {
+	hasIdent := e.namespace != "" && e.id != ""
+
 	if msg := e.Message(); msg != "" {
-		if e.namespace != "" && e.id != "" {
+		if hasIdent {
+			if e.code != 0 {
+				return fmt.Sprintf("%s.%s[%d]: %s", e.namespace, e.id, e.code, msg)
+			}
 			return fmt.Sprintf("%s.%s: %s", e.namespace, e.id, msg)
+		}
+		if e.code != 0 {
+			return fmt.Sprintf("err[%d]: %s", e.code, msg)
 		}
 		return msg
 	}
 
-	switch {
-	case e.namespace != "" && e.id != "":
+	if hasIdent {
+		if e.code != 0 {
+			return fmt.Sprintf("%s.%s[%d]", e.namespace, e.id, e.code)
+		}
 		return fmt.Sprintf("%s.%s", e.namespace, e.id)
-	default:
-		return fmt.Sprintf("errcode:%d", e.code)
 	}
+	return fmt.Sprintf("errcode:%d", e.code)
 }
 
 func (e *Error) Unwrap() error {

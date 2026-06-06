@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 	if e.Message() != "failed to create user" {
 		t.Fatalf("message: got %q", e.Message())
 	}
-	if e.Error() != "user.create_failed: failed to create user" {
+	if e.Error() != "user.create_failed[10001]: failed to create user" {
 		t.Fatalf("error string: got %q", e.Error())
 	}
 	if !errors.Is(e, msg) || !errors.Is(e, base) || !errors.Is(e, extra) {
