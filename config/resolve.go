@@ -103,7 +103,7 @@ func resolveRefValue(ref string, lookup refLookup, visiting map[string]bool) (an
 
 	v, ok := lookup(ref)
 	if !ok {
-		return "", nil
+		return nil, fmt.Errorf("config: unresolved reference: ${%s}", ref)
 	}
 
 	// If the referenced value itself contains references, resolve it recursively.
