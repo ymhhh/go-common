@@ -178,3 +178,91 @@ func TestDeepCopy_typedMaps(t *testing.T) {
 		t.Fatalf("mutate typed int map copy affected src: %v", origIntMap["num"])
 	}
 }
+
+func TestDeepCopy_typedMapDirect(t *testing.T) {
+	src := map[string]int{"a": 1, "b": 2}
+	cp := DeepCopy(src).(map[string]int)
+	if len(cp) != len(src) {
+		t.Fatalf("len: got %d want %d", len(cp), len(src))
+	}
+	cp["a"] = 99
+	if src["a"] != 1 {
+		t.Fatalf("mutate copy key affected original: %v", src["a"])
+	}
+}
+
+func TestDeepCopy_typedSliceDirect(t *testing.T) {
+	src := []int{1, 2, 3}
+	cp := DeepCopy(src).([]int)
+	if len(cp) != len(src) {
+		t.Fatalf("len: got %d want %d", len(cp), len(src))
+	}
+	cp[0] = 99
+	if src[0] != 1 {
+		t.Fatalf("mutate copy affected original: %v", src[0])
+	}
+}
+
+func TestDeepCopy_array(t *testing.T) {
+	src := [3]int{1, 2, 3}
+	cp := DeepCopy(src).([3]int)
+	cp[0] = 99
+	if src[0] != 1 {
+		t.Fatalf("mutate copy affected original: %v", src[0])
+	}
+}
+
+func TestDeepCopy_ptrToMap(t *testing.T) {
+	src := &map[string]int{"a": 1}
+	cp := DeepCopy(src).(*map[string]int)
+	if cp == src {
+		t.Fatal("ptr to map: same pointer")
+	}
+	if reflect.ValueOf(*cp).Pointer() == reflect.ValueOf(*src).Pointer() {
+		t.Fatal("pointed-to map: same backing map")
+	}
+	(*cp)["a"] = 99
+	if (*src)["a"] != 1 {
+		t.Fatalf("mutate copy affected original: %v", (*src)["a"])
+	}
+}
+
+func TestDeepCopy_ptrToSlice(t *testing.T) {
+	src := &[]int{1, 2, 3}
+	cp := DeepCopy(src).(*[]int)
+	if cp == src {
+		t.Fatal("ptr to slice: same pointer")
+	}
+	(*cp)[0] = 99
+	if (*src)[0] != 1 {
+		t.Fatalf("mutate copy affected original: %v", (*src)[0])
+	}
+}
+
+func TestDeepCopy_nilPtrToMap(t *testing.T) {
+	var src *map[string]int
+	cp := DeepCopy(src)
+	if cp != nil {
+		t.Fatal("nil ptr should return nil")
+	}
+}
+
+func TestDeepCopy_nilSlice(t *testing.T) {
+	var src []int
+	cp := DeepCopy(src)
+	// Typed nil slice wrapped in any is not == nil.
+	cpSl, ok := cp.([]int)
+	if !ok || cpSl != nil {
+		t.Fatalf("nil slice should preserve nil: type=%T val=%v", cp, cp)
+	}
+}
+
+func TestDeepCopy_nilMap(t *testing.T) {
+	var src map[string]int
+	cp := DeepCopy(src)
+	// Typed nil map wrapped in any is not == nil.
+	cpM, ok := cp.(map[string]int)
+	if !ok || cpM != nil {
+		t.Fatalf("nil map should preserve nil: type=%T val=%v", cp, cp)
+	}
+}
