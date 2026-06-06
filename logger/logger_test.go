@@ -208,3 +208,106 @@ logger:
 		t.Fatalf("log file missing message: %q", string(b))
 	}
 }
+
+func TestInitGlobal_ReusesLoggerAcrossReload(t *testing.T) {
+	resetGlobalForTest(t)
+	t.Cleanup(func() { resetGlobalForTest(t) })
+
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.log")
+	secondPath := filepath.Join(dir, "second.log")
+
+	if err := InitGlobal(fileLoggerConfig(firstPath)); err != nil {
+		t.Fatalf("InitGlobal first: %v", err)
+	}
+	entry := L().WithField("component", "worker")
+	entry.Info("before reload")
+
+	if err := InitGlobal(fileLoggerConfig(secondPath)); err != nil {
+		t.Fatalf("InitGlobal second: %v", err)
+	}
+	entry.Info("after reload from cached entry")
+	L().Info("after reload from fresh entry")
+
+	globalMu.RLock()
+	l := global
+	globalMu.RUnlock()
+	if err := l.Close(); err != nil {
+		t.Fatalf("Close global: %v", err)
+	}
+
+	secondLog, err := os.ReadFile(secondPath)
+	if err != nil {
+		t.Fatalf("read second log: %v", err)
+	}
+	if !strings.Contains(string(secondLog), "after reload from cached entry") {
+		t.Fatalf("cached entry did not write to reloaded global logger: %q", string(secondLog))
+	}
+	if !strings.Contains(string(secondLog), "after reload from fresh entry") {
+		t.Fatalf("fresh entry missing from second log: %q", string(secondLog))
+	}
+}
+
+func TestInitGlobal_ReloadAfterCloseClosesCurrentOutput(t *testing.T) {
+	resetGlobalForTest(t)
+	t.Cleanup(func() { resetGlobalForTest(t) })
+
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.log")
+	secondPath := filepath.Join(dir, "second.log")
+
+	if err := InitGlobal(fileLoggerConfig(firstPath)); err != nil {
+		t.Fatalf("InitGlobal first: %v", err)
+	}
+	globalMu.RLock()
+	first := global
+	globalMu.RUnlock()
+	if err := first.Close(); err != nil {
+		t.Fatalf("Close first global: %v", err)
+	}
+
+	if err := InitGlobal(fileLoggerConfig(secondPath)); err != nil {
+		t.Fatalf("InitGlobal second: %v", err)
+	}
+	L().Info("before final close")
+	globalMu.RLock()
+	second := global
+	globalMu.RUnlock()
+	if err := second.Close(); err != nil {
+		t.Fatalf("Close second global: %v", err)
+	}
+	L().Info("after final close")
+
+	secondLog, err := os.ReadFile(secondPath)
+	if err != nil {
+		t.Fatalf("read second log: %v", err)
+	}
+	if !strings.Contains(string(secondLog), "before final close") {
+		t.Fatalf("second log missing pre-close entry: %q", string(secondLog))
+	}
+	if strings.Contains(string(secondLog), "after final close") {
+		t.Fatalf("second global output remained open after Close: %q", string(secondLog))
+	}
+}
+
+func fileLoggerConfig(path string) config.Config {
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+		},
+	}
+	return opts.ToConfig()
+}
+
+func resetGlobalForTest(t *testing.T) {
+	t.Helper()
+	globalMu.Lock()
+	l := global
+	global = nil
+	globalMu.Unlock()
+	if l != nil {
+		_ = l.Close()
+	}
+}
