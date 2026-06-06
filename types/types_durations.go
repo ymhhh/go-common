@@ -19,48 +19,32 @@ var _ flag.Value = (*Duration)(nil)
 var _ flag.Getter = (*Duration)(nil)
 
 func (d Duration) String() string {
-	var (
-		ds   = int64(d)
-		unit = "ms"
-	)
+	ds := int64(d)
 	if ds == 0 {
 		return "0s"
 	}
 
-	hour := int64(time.Hour)
-	factors := map[string]int64{
-		"y":  hour * 24 * 365,
-		"w":  hour * 24 * 7,
-		"d":  hour * 24,
-		"h":  hour,
-		"m":  int64(time.Minute),
-		"s":  int64(time.Second),
-		"ms": int64(time.Millisecond),
-		"us": int64(time.Microsecond),
-		"ns": int64(time.Nanosecond),
+	units := []struct {
+		name   string
+		factor int64
+	}{
+		{"y", int64(time.Hour * 24 * 365)},
+		{"w", int64(time.Hour * 24 * 7)},
+		{"d", int64(time.Hour * 24)},
+		{"h", int64(time.Hour)},
+		{"m", int64(time.Minute)},
+		{"s", int64(time.Second)},
+		{"ms", int64(time.Millisecond)},
+		{"us", int64(time.Microsecond)},
+		{"ns", int64(time.Nanosecond)},
 	}
 
-	switch int64(0) {
-	case ds % factors["y"]:
-		unit = "y"
-	case ds % factors["w"]:
-		unit = "w"
-	case ds % factors["d"]:
-		unit = "d"
-	case ds % factors["h"]:
-		unit = "h"
-	case ds % factors["m"]:
-		unit = "m"
-	case ds % factors["s"]:
-		unit = "s"
-	case ds % factors["ms"]:
-		unit = "ms"
-	case ds % factors["us"]:
-		unit = "us"
-	case ds % factors["ns"]:
-		unit = "ns"
+	for _, u := range units {
+		if ds%u.factor == 0 {
+			return fmt.Sprintf("%v%v", ds/u.factor, u.name)
+		}
 	}
-	return fmt.Sprintf("%v%v", ds/factors[unit], unit)
+	return fmt.Sprintf("%vns", ds)
 }
 
 func (d *Duration) Set(s string) error {
