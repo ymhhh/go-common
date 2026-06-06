@@ -25,12 +25,10 @@ func resolveAny(v any, lookup refLookup, visiting map[string]bool) error {
 	switch x := v.(type) {
 	case map[string]any:
 		for k, vv := range x {
-			// resolve value first
 			if err := resolveAny(vv, lookup, visiting); err != nil {
 				return err
 			}
 			x[k] = vv
-			// if value is string, resolve placeholders and possibly replace type
 			if s, ok := x[k].(string); ok {
 				rv, err := resolveString(s, lookup, visiting)
 				if err != nil {
@@ -54,9 +52,6 @@ func resolveAny(v any, lookup refLookup, visiting map[string]bool) error {
 			}
 		}
 		return nil
-	case string:
-		_, err := resolveString(x, lookup, visiting)
-		return err
 	default:
 		return nil
 	}
