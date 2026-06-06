@@ -1,7 +1,7 @@
 package xstruct
 
 import (
-	"runtime"
+	"sync"
 	"sync/atomic"
 )
 
@@ -10,8 +10,9 @@ import (
 // It keeps a dummy head node so enqueue/dequeue can update head/tail without
 // special empty-queue CAS races.
 type Queue[T any] struct {
-	head atomic.Pointer[node[T]]
-	tail atomic.Pointer[node[T]]
+	head  atomic.Pointer[node[T]]
+	tail  atomic.Pointer[node[T]]
+	once  sync.Once
 }
 
 func NewQueue[T any]() *Queue[T] {
@@ -19,21 +20,16 @@ func NewQueue[T any]() *Queue[T] {
 	q := &Queue[T]{}
 	q.head.Store(dummy)
 	q.tail.Store(dummy)
+	q.once.Do(func() {}) // mark as initialized
 	return q
 }
 
 func (q *Queue[T]) init() {
-	if q.tail.Load() != nil {
-		return
-	}
-	dummy := &node[T]{}
-	if q.head.CompareAndSwap(nil, dummy) {
+	q.once.Do(func() {
+		dummy := &node[T]{}
+		q.head.Store(dummy)
 		q.tail.Store(dummy)
-		return
-	}
-	for q.tail.Load() == nil {
-		runtime.Gosched()
-	}
+	})
 }
 
 // Enqueue adds v to the tail of the queue.
