@@ -5,8 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Config is the config for client TLS.
@@ -16,30 +14,6 @@ type Config struct {
 	CAPath             string `yaml:"ca_path" json:"ca_path"`
 	ServerName         string `yaml:"server_name" json:"server_name"`
 	InsecureSkipVerify bool   `yaml:"insecure_skip_verify" json:"insecure_skip_verify"`
-}
-
-var _ yaml.Unmarshaler = (*Config)(nil)
-var _ yaml.Marshaler = (*Config)(nil)
-
-// MarshalYAML implements yaml.Marshaler.
-func (c Config) MarshalYAML() (any, error) {
-	type plain Config
-	return plain(c), nil
-}
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (c *Config) UnmarshalYAML(value *yaml.Node) error {
-	if value == nil {
-		*c = Config{}
-		return nil
-	}
-	type plain Config
-	var tmp plain
-	if err := value.Decode(&tmp); err != nil {
-		return err
-	}
-	*c = Config(tmp)
-	return nil
 }
 
 // GetTLSConfig builds a *tls.Config for outgoing TLS connections.
