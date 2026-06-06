@@ -8,6 +8,8 @@
 - 支持 `${a.b.c}` 引用其它配置项、`${ENV}` 引用环境变量
 - 支持 `Get` / `GetOK` / `Set` 点路径读写
 - 支持 `Object(&obj, WithObjectPath(path))` 将子树反序列化到结构体（`path==""` 表示整棵配置）
+- `GetMap` / `GetConfig` 返回深拷贝，外部修改不影响原始配置树
+- 未定义的 `${REF}` 引用在 `Load` 时会返回错误
 
 **导入**：`github.com/ymhhh/go-common/config`
 
@@ -44,6 +46,8 @@ a:
     e: ${ENV}
     mix: "x-${a.b.c}-${ENV}"
 ```
+
+> `${REF}` 在环境变量和配置树中都无法解析时，`Load` 会返回错误。
 
 #### include 合并（后者覆盖前者）
 

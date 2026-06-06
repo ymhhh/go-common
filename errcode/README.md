@@ -7,3 +7,17 @@
 - `ErrorCodeTmpl` + `NewTmpl`：按 `(namespace, code)` 注册模板，重复注册会 `panic`
 
 **导入**：`github.com/ymhhh/go-common/errcode`
+
+### Error() 格式
+
+`Error()` 字符串表示遵循以下规则，确保数字 code 始终可见：
+
+| 条件 | 格式 |
+|------|------|
+| namespace + id + code(>0) + msg | `namespace.id[code]: msg` |
+| namespace + id + msg（code=0） | `namespace.id: msg` |
+| msg + code(>0)（无 namespace/id） | `err[code]: msg` |
+| 仅 msg | `msg` |
+| 仅 code | `errcode:code` |
+
+示例：`user.create_failed[10001]: failed to create user`

@@ -10,7 +10,7 @@
 logger:
   level: info
   format: json         # text|json
-  output: stdout       # stdout|stderr|discard|/path/to/app.log|file:/path/to/app.log|file
+  output: stdout       # stdout|stderr|discard|/path/to/app.log|file:/path/to/app.log
   reportCaller: false
   file:
     path: ./app.log
@@ -28,6 +28,8 @@ logger:
     prettyPrint: false
 ```
 
+> `output` 为空时自动选用 `file.path`；若两者都未设置则默认输出到 `stderr`。相对路径相对于配置文件所在目录解析，无法解析时返回错误。
+
 ### 使用示例
 
 ```go
@@ -41,5 +43,7 @@ logger.L().WithField("module", "main").Info("started")
 l, _ := logger.FromConfig(cfg) // default subtree: "logger"
 defer l.Close()
 l.WithField("module", "worker").Warn("something happened")
-```
 
+// 带 trace_id/span_id 的 context-aware 日志
+logger.LFromContext(ctx).Info("request processed")
+```
