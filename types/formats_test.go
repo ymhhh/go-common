@@ -7,7 +7,7 @@ import (
 )
 
 func TestFindStringSubmatchMap(t *testing.T) {
-	m, ok := FindStringSubmatchMap("10ms", timeReg)
+	m, ok := FindStringSubmatchMap("10ms", timeRe)
 	if !ok {
 		t.Fatalf("expected match")
 	}
@@ -15,7 +15,7 @@ func TestFindStringSubmatchMap(t *testing.T) {
 		t.Fatalf("unexpected captures: %+v", m)
 	}
 
-	_, ok = FindStringSubmatchMap("not-a-duration", timeReg)
+	_, ok = FindStringSubmatchMap("not-a-duration", timeRe)
 	if ok {
 		t.Fatalf("expected not match")
 	}

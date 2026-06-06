@@ -13,6 +13,11 @@ const (
 	bitReg = `^(?P<value>([0-9]+(\.[0-9]+)?))\s*(?P<unit>(b|byte|bytes|kb|kilobyte|kilobytes|mb|megabyte|megabytes|gb|gigabyte|gigabytes|tb|terabyte|terabytes|pb|petabyte|petabytes|eb|exabyte|exabytes|zb|zettabyte|zettabytes|yb|yottabyte|yottabytes|k|ki|kib|kibibyte|kibibytes|m|mi|mib|mebibyte|mebibytes|g|gi|gib|gibibyte|gibibytes|t|ti|tib|tebibyte|tebibytes|p|pi|pib|pebibyte|pebibytes|e|ei|eib|exbibyte|exbibytes|z|zi|zib|zebibyte|zebibytes|y|yi|yib|yobibyte|yobibytes))$`
 )
 
+var (
+	timeRe = regexp.MustCompile(timeReg)
+	bitRe  = regexp.MustCompile(bitReg)
+)
+
 // ByteSizes
 var (
 	_Num1000 = big.NewInt(1000)
@@ -38,22 +43,17 @@ var (
 	_YByte = (&big.Int{}).Mul(_ZByte, _Num1000)
 )
 
-// FindStringSubmatchMap information:
-// returns a map of strings holding the text of the
-// leftmost match of the regular expression in s and the matches, if any, of
-// its subexpressions, as defined by the 'SubMatch' description in the
-// package comment.
-// A return value of nil indicates no match.
-func FindStringSubmatchMap(s, exp string) (map[string]string, bool) {
-	reg := regexp.MustCompile(exp)
+// FindStringSubmatchMap returns a map of named capture groups from the leftmost match
+// of re in s. A return value of nil indicates no match.
+func FindStringSubmatchMap(s string, re *regexp.Regexp) (map[string]string, bool) {
 	captures := make(map[string]string)
 
-	match := reg.FindStringSubmatch(s)
+	match := re.FindStringSubmatch(s)
 	if match == nil {
 		return captures, false
 	}
 
-	for i, name := range reg.SubexpNames() {
+	for i, name := range re.SubexpNames() {
 		if i == 0 || name == "" {
 			continue
 		}
@@ -64,7 +64,7 @@ func FindStringSubmatchMap(s, exp string) (map[string]string, bool) {
 
 // ParseStringByteSize return big size
 func ParseStringByteSize(key string, defValue ...*big.Int) *big.Int {
-	groups, matched := FindStringSubmatchMap(key, bitReg)
+	groups, matched := FindStringSubmatchMap(key, bitRe)
 	if !matched {
 		return defaultByteSize(defValue...)
 	}
@@ -127,7 +127,7 @@ func parseByteSizeValue(value string, unit *big.Int, defValue ...*big.Int) *big.
 
 // ParseStringTime return time.Duration
 func ParseStringTime(s string, defValue ...time.Duration) time.Duration {
-	groups, matched := FindStringSubmatchMap(s, timeReg)
+	groups, matched := FindStringSubmatchMap(s, timeRe)
 
 	if !matched {
 		if len(defValue) == 0 {
