@@ -49,7 +49,10 @@ func decodeToObject(v any, out any) error {
 	}
 
 	// Fallback to YAML to better support yaml tags.
-	yb, _ := yaml.Marshal(v)
+	yb, yerr := yaml.Marshal(v)
+	if yerr != nil {
+		return fmt.Errorf("config: marshal: %w", yerr)
+	}
 	if err := yaml.Unmarshal(yb, out); err != nil {
 		return fmt.Errorf("config: unmarshal to object: %w", err)
 	}
