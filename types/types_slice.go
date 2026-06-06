@@ -2,9 +2,8 @@ package types
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sort"
-	"time"
 )
 
 // Contains returns true if the slice contains the value
@@ -286,17 +285,13 @@ func Partition[T any](slice []T, fn func(T) bool) ([]T, []T) {
 	return trueSlice, falseSlice
 }
 
-var defaultRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-// Shuffle shuffles slice using Fisher-Yates algorithm
+// Shuffle shuffles slice using Fisher-Yates algorithm.
 func Shuffle[T any](slice []T) []T {
 	result := make([]T, len(slice))
 	copy(result, slice)
-
-	for i := len(result) - 1; i > 0; i-- {
-		j := defaultRand.Intn(i + 1)
+	rand.Shuffle(len(result), func(i, j int) {
 		result[i], result[j] = result[j], result[i]
-	}
+	})
 	return result
 }
 
@@ -360,16 +355,12 @@ func Unzip[T any, U any](pairs []Pair[T, U]) ([]T, []U) {
 	return firsts, seconds
 }
 
-// Convert converts slice from one type to another using converter function
+// Convert converts slice from one type to another using converter function.
 func Convert[T any, R any](slice []T, converter func(T) R) []R {
 	if slice == nil {
 		return nil
 	}
-	result := make([]R, len(slice))
-	for i, v := range slice {
-		result[i] = converter(v)
-	}
-	return result
+	return Map(slice, converter)
 }
 
 // Sort sorts slice using less function.
