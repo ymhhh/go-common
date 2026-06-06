@@ -150,3 +150,31 @@ func TestDeepCopy_mapAnyAny_nonStringKeys(t *testing.T) {
 		t.Fatalf("mutate int key: src changed to %v", src[1])
 	}
 }
+
+func TestDeepCopy_typedMaps(t *testing.T) {
+	src := map[string]any{
+		"strMap": map[string]any{"key": "value"},
+		"intMap": map[string]any{"num": 42},
+	}
+	cp := DeepCopy(src).(map[string]any)
+
+	strMap := cp["strMap"].(map[string]any)
+	origStrMap := src["strMap"].(map[string]any)
+	if reflect.ValueOf(strMap).Pointer() == reflect.ValueOf(origStrMap).Pointer() {
+		t.Fatal("typed string map: same pointer")
+	}
+	strMap["key"] = "mutated"
+	if origStrMap["key"] != "value" {
+		t.Fatalf("mutate typed string map copy affected src: %v", origStrMap["key"])
+	}
+
+	intMap := cp["intMap"].(map[string]any)
+	origIntMap := src["intMap"].(map[string]any)
+	if reflect.ValueOf(intMap).Pointer() == reflect.ValueOf(origIntMap).Pointer() {
+		t.Fatal("typed int map: same pointer")
+	}
+	intMap["num"] = 99
+	if origIntMap["num"] != 42 {
+		t.Fatalf("mutate typed int map copy affected src: %v", origIntMap["num"])
+	}
+}

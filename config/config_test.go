@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -349,5 +350,34 @@ func TestValue_Slice(t *testing.T) {
 	}
 	if _, err := (Value{v: nil}).Slice(); err == nil {
 		t.Fatalf("expected error for nil")
+	}
+}
+
+func TestResolve_ReferenceCycle(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "a.yaml", `
+x: ${y}
+y: ${x}
+`)
+	_, err := Load(filepath.Join(dir, "a.yaml"))
+	if err == nil {
+		t.Fatalf("expected cycle error")
+	}
+	if !strings.Contains(err.Error(), "cycle") {
+		t.Fatalf("error should mention cycle: %v", err)
+	}
+}
+
+func TestResolve_UndefinedReferenceReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "a.yaml", `
+host: ${UNDEFINED_VAR_XYZ}
+`)
+	_, err := Load(filepath.Join(dir, "a.yaml"))
+	if err == nil {
+		t.Fatalf("expected error for undefined reference")
+	}
+	if !strings.Contains(err.Error(), "unresolved") {
+		t.Fatalf("error should mention unresolved: %v", err)
 	}
 }

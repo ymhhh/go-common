@@ -88,3 +88,31 @@ func TestQueue_Concurrent(t *testing.T) {
 		t.Fatalf("popped=%d pushed=%d", popped, pushed.Load())
 	}
 }
+
+func TestQueue_ConcurrentFIFO(t *testing.T) {
+	const n = 10000
+	q := NewQueue[int]()
+
+	var produced sync.WaitGroup
+	produced.Add(1)
+
+	// Single producer pushes sequential values.
+	go func() {
+		defer produced.Done()
+		for i := 0; i < n; i++ {
+			q.Enqueue(i)
+		}
+	}()
+
+	// Wait for producer to finish, then verify FIFO ordering.
+	produced.Wait()
+	for i := 0; i < n; i++ {
+		v, ok := q.Dequeue()
+		if !ok {
+			t.Fatalf("unexpected empty queue at %d", i)
+		}
+		if v != i {
+			t.Fatalf("expected %d, got %d", i, v)
+		}
+	}
+}
