@@ -84,12 +84,7 @@ func ToFloat64(value any) (float64, error) {
 	}
 }
 
-// RoundFund round fund to int64
+// RoundFund rounds fund to the nearest integer, rounding half away from zero.
 func RoundFund(fund float64) int64 {
-	fInt, fFloat := math.Modf(fund)
-	f := int64(fInt)
-	if fFloat >= 0.50000000000 {
-		f++
-	}
-	return f
+	return int64(math.Round(fund))
 }
