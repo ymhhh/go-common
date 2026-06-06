@@ -28,13 +28,14 @@ func resolveAny(v any, lookup refLookup, visiting map[string]bool) error {
 			if err := resolveAny(vv, lookup, visiting); err != nil {
 				return err
 			}
-			x[k] = vv
-			if s, ok := x[k].(string); ok {
+			if s, ok := vv.(string); ok {
 				rv, err := resolveString(s, lookup, visiting)
 				if err != nil {
 					return err
 				}
 				x[k] = rv
+			} else {
+				x[k] = vv
 			}
 		}
 		return nil
