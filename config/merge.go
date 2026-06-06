@@ -15,6 +15,8 @@ func deepMerge(dst, src map[string]any) map[string]any {
 					continue
 				}
 			}
+			// Merge into an empty map to deep-copy sm so the merged result
+			// does not share mutable references with the source.
 			dst[k] = deepMerge(map[string]any{}, sm)
 			continue
 		}
