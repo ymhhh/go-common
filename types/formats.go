@@ -122,6 +122,7 @@ func parseByteSizeValue(value string, unit *big.Int, defValue ...*big.Int) *big.
 		return defaultByteSize(defValue...)
 	}
 	r.Mul(r, new(big.Rat).SetInt(unit))
+	// Integer division truncates toward zero (e.g. 1.3kib → 1331, not 1331.2).
 	return new(big.Int).Quo(r.Num(), r.Denom())
 }
 
