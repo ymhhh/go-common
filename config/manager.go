@@ -10,14 +10,19 @@ import (
 	"github.com/ymhhh/go-common/types"
 )
 
+func getDef[T any](defValue []T) T {
+	if len(defValue) > 0 {
+		return defValue[0]
+	}
+	var zero T
+	return zero
+}
+
 // GetInterface returns the raw value at key, or the first default if missing.
 func (c *Tree) GetInterface(key string, defValue ...any) (res any) {
 	v, ok := getPath(c.root, key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return nil
+		return getDef(defValue)
 	}
 	return v
 }
@@ -25,17 +30,11 @@ func (c *Tree) GetInterface(key string, defValue ...any) (res any) {
 func (c *Tree) GetString(key string, defValue ...string) (res string) {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return ""
+		return getDef(defValue)
 	}
 	s, err := val.String()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return ""
+		return getDef(defValue)
 	}
 	return s
 }
@@ -43,17 +42,11 @@ func (c *Tree) GetString(key string, defValue ...string) (res string) {
 func (c *Tree) GetBoolean(key string, defValue ...bool) (b bool) {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return false
+		return getDef(defValue)
 	}
 	x, err := val.Bool()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return false
+		return getDef(defValue)
 	}
 	return x
 }
@@ -61,17 +54,11 @@ func (c *Tree) GetBoolean(key string, defValue ...bool) (b bool) {
 func (c *Tree) GetInt(key string, defValue ...int) (res int) {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 	x, err := val.Int()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 	return x
 }
@@ -79,17 +66,11 @@ func (c *Tree) GetInt(key string, defValue ...int) (res int) {
 func (c *Tree) GetFloat(key string, defValue ...float64) (res float64) {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 	x, err := val.Float64()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 	return x
 }
@@ -174,10 +155,7 @@ func (c *Tree) GetFloatList(key string) []float64 {
 func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Duration {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 
 	// numeric -> treat as nanoseconds
@@ -190,10 +168,7 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 
 	s, err := val.String()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return 0
+		return getDef(defValue)
 	}
 	d := types.ParseStringTime(s)
 	if d == 0 && s != "" && s != "0" {
@@ -203,9 +178,7 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 		}
 	}
 	if d == 0 {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
+		return getDef(defValue)
 	}
 	return d
 }
@@ -213,10 +186,7 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 	val, ok := c.GetOK(key)
 	if !ok {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return nil
+		return getDef(defValue)
 	}
 
 	switch x := val.Any().(type) {
@@ -232,24 +202,18 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		if n, ok := jsonNumberByteSize(x); ok {
 			return n
 		}
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return nil
+		return getDef(defValue)
 	case float64:
 		return big.NewInt(int64(x))
 	}
 
 	s, err := val.String()
 	if err != nil {
-		if len(defValue) > 0 {
-			return defValue[0]
-		}
-		return nil
+		return getDef(defValue)
 	}
 	out := types.ParseStringByteSize(s, defValue...)
-	if out == nil && len(defValue) > 0 {
-		return defValue[0]
+	if out == nil {
+		return getDef(defValue)
 	}
 	return out
 }
