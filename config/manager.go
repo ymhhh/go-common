@@ -241,7 +241,7 @@ func (c *Tree) GetMap(key string) Options {
 	if err != nil {
 		return nil
 	}
-	return Options(m)
+	return Options(DeepCopy(m).(map[string]any))
 }
 
 func (c *Tree) GetConfig(key string) Config {
@@ -253,7 +253,7 @@ func (c *Tree) GetConfig(key string) Config {
 	if err != nil {
 		return &Tree{root: map[string]any{}, baseDir: c.baseDir}
 	}
-	return &Tree{root: m, baseDir: c.baseDir}
+	return &Tree{root: DeepCopy(m).(map[string]any), baseDir: c.baseDir}
 }
 
 func (c *Tree) GetValuesConfig(key string) Config {
