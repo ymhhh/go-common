@@ -191,7 +191,7 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 
 	switch x := val.Any().(type) {
 	case *big.Int:
-		return x
+		return new(big.Int).Set(x)
 	case int:
 		return big.NewInt(int64(x))
 	case int64:
