@@ -66,7 +66,7 @@ func (q *Queue[T]) Dequeue() (v T, ok bool) {
 		}
 
 		// Tail is behind; help advance it.
-		if head == tail && next != nil {
+		if head == tail {
 			q.tail.CompareAndSwap(tail, next)
 			continue
 		}
