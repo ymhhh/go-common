@@ -48,6 +48,8 @@ func (c Config) GetTLSConfig() (*tls.Config, error) {
 
 		pool, err := x509.SystemCertPool()
 		if err != nil {
+			// System cert pool unavailable (e.g. minimal container). Only the
+			// explicitly provided CA bundle will be trusted.
 			pool = x509.NewCertPool()
 		}
 		if !pool.AppendCertsFromPEM(pem) {
