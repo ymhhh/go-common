@@ -118,19 +118,11 @@ func New(cfg Config) (*Logger, error) {
 func newWithBaseDir(cfg Config, baseDir string) (*Logger, error) {
 	l := logrus.New()
 
-	// defaults
 	if cfg.Level == "" {
 		cfg.Level = "info"
 	}
 	if cfg.Format == "" {
 		cfg.Format = "text"
-	}
-	if cfg.Output == "" {
-		if strings.TrimSpace(cfg.File.Path) != "" {
-			cfg.Output = "file"
-		} else {
-			cfg.Output = "stderr"
-		}
 	}
 
 	level, err := logrus.ParseLevel(strings.ToLower(cfg.Level))
@@ -154,7 +146,12 @@ func newWithBaseDir(cfg Config, baseDir string) (*Logger, error) {
 		return nil, fmt.Errorf("logger: unsupported format: %q", cfg.Format)
 	}
 
-	out, closer, err := openOutput(cfg, baseDir)
+	path, err := resolveOutputPath(cfg, baseDir)
+	if err != nil {
+		return nil, err
+	}
+
+	out, closer, err := createWriter(path, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -163,32 +160,37 @@ func newWithBaseDir(cfg Config, baseDir string) (*Logger, error) {
 	return &Logger{Logger: l, closer: closer}, nil
 }
 
-func openOutput(cfg Config, baseDir string) (io.Writer, io.Closer, error) {
+func resolveOutputPath(cfg Config, baseDir string) (string, error) {
 	s := strings.TrimSpace(cfg.Output)
-	if s == "" || strings.EqualFold(s, "stderr") {
-		return os.Stderr, nil, nil
-	}
-	if strings.EqualFold(s, "stdout") {
-		return os.Stdout, nil, nil
-	}
-	if strings.EqualFold(s, "discard") {
-		return io.Discard, nil, nil
-	}
 
-	if strings.EqualFold(s, "file") {
-		s = ""
-	}
-
-	// file:/abs/or/rel/path
-	if strings.HasPrefix(strings.ToLower(s), "file:") {
-		s = strings.TrimSpace(s[len("file:"):])
-	}
-
-	if s == "" {
+	// Handle special output targets.
+	switch {
+	case s == "":
+		if p := strings.TrimSpace(cfg.File.Path); p != "" {
+			s = p
+		} else {
+			return "stderr", nil
+		}
+	case strings.EqualFold(s, "stderr"):
+		return "stderr", nil
+	case strings.EqualFold(s, "stdout"):
+		return "stdout", nil
+	case strings.EqualFold(s, "discard"):
+		return "discard", nil
+	case strings.EqualFold(s, "file"):
 		s = strings.TrimSpace(cfg.File.Path)
+		if s == "" {
+			return "", fmt.Errorf("logger: empty output path")
+		}
+	default:
+		// file:/abs/or/rel/path
+		if strings.HasPrefix(strings.ToLower(s), "file:") {
+			s = strings.TrimSpace(s[len("file:"):])
+		}
 	}
+
 	if s == "" {
-		return nil, nil, fmt.Errorf("logger: empty output path")
+		return "", fmt.Errorf("logger: empty output path")
 	}
 
 	if !filepath.IsAbs(s) {
@@ -196,7 +198,22 @@ func openOutput(cfg Config, baseDir string) (io.Writer, io.Closer, error) {
 			s = filepath.Join(baseDir, s)
 		} else if wd, err := os.Getwd(); err == nil {
 			s = filepath.Join(wd, s)
+		} else {
+			return "", fmt.Errorf("logger: cannot resolve relative output path %q: %w", s, err)
 		}
+	}
+
+	return s, nil
+}
+
+func createWriter(path string, cfg Config) (io.Writer, io.Closer, error) {
+	switch path {
+	case "stderr":
+		return os.Stderr, nil, nil
+	case "stdout":
+		return os.Stdout, nil, nil
+	case "discard":
+		return io.Discard, nil, nil
 	}
 
 	// rotate output (lumberjack)
@@ -219,26 +236,27 @@ func openOutput(cfg Config, baseDir string) (io.Writer, io.Closer, error) {
 			maxAge = 7
 		}
 		lj := &lumberjack.Logger{
-			Filename:   s,
+			Filename:   path,
 			MaxSize:    maxSize,
 			MaxBackups: maxBackups,
 			MaxAge:     maxAge,
 			Compress:   cfg.File.Rotate.Compress,
 			LocalTime:  cfg.File.Rotate.LocalTime,
 		}
-		f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		// Ensure the directory exists.
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 		if err != nil {
-			return nil, nil, fmt.Errorf("logger: open output file %q: %w", s, err)
+			return nil, nil, fmt.Errorf("logger: open output file %q: %w", path, err)
 		}
 		if err := f.Close(); err != nil {
-			return nil, nil, fmt.Errorf("logger: close output file %q: %w", s, err)
+			return nil, nil, fmt.Errorf("logger: close output file %q: %w", path, err)
 		}
 		return lj, lj, nil
 	}
 
-	f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		return nil, nil, fmt.Errorf("logger: open output file %q: %w", s, err)
+		return nil, nil, fmt.Errorf("logger: open output file %q: %w", path, err)
 	}
 	return f, f, nil
 }
