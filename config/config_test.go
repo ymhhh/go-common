@@ -186,6 +186,26 @@ auth:
 	}
 }
 
+func TestLoad_JSONC_CommentStrippingDoesNotCreateInclude(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "override.yaml", `
+auth:
+  admin: true
+`)
+	main := writeFile(t, dir, "main.json", `
+/**/#include override.yaml
+{
+  "auth": {}
+}
+`)
+
+	if _, err := Load(main); err == nil {
+		t.Fatalf("expected invalid JSONC instead of manufacturing an include directive")
+	} else if strings.Contains(err.Error(), "override.yaml") {
+		t.Fatalf("error should come from parsing main config, not loading override: %v", err)
+	}
+}
+
 func TestIncludeKey_List(t *testing.T) {
 	dir := t.TempDir()
 
