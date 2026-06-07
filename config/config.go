@@ -93,9 +93,11 @@ func (c *Tree) decodeSubtree(path string, out any) error {
 }
 
 func (c *Tree) lookupRef(ref string) (any, bool) {
-	// env first
+	if v, ok := getPath(c.root, ref); ok {
+		return v, true
+	}
 	if v, ok := lookupEnv(ref); ok {
 		return v, true
 	}
-	return getPath(c.root, ref)
+	return nil, false
 }

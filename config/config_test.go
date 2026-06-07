@@ -109,6 +109,83 @@ a:
 	}
 }
 
+func TestLoad_RefPrefersConfigPathOverEnvironment(t *testing.T) {
+	t.Setenv("secrets.db.password", "from-env")
+
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.yaml", `
+secrets:
+  db:
+    password: from-config
+database:
+  password: ${secrets.db.password}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := cfg.GetString("database.password"); got != "from-config" {
+		t.Fatalf("database.password: got %q", got)
+	}
+}
+
+func TestLoad_YAML_IndentedIncludeTextPreserved(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "override.yaml", `
+auth:
+  enabled: false
+`)
+	main := writeFile(t, dir, "main.yaml", `
+auth:
+  enabled: true
+notes: |
+  Deployment note:
+  #include override.yaml
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.GetBoolean("auth.enabled") {
+		t.Fatalf("indented include text should not load override.yaml")
+	}
+	if got := cfg.GetString("notes"); !strings.Contains(got, "#include override.yaml") {
+		t.Fatalf("notes should preserve indented include text, got %q", got)
+	}
+}
+
+func TestLoad_JSONC_CommentedIncludeIgnored(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "override.yaml", `
+auth:
+  enabled: false
+  admin: true
+`)
+	main := writeFile(t, dir, "main.json", `
+/*
+#include override.yaml
+*/
+{
+  "auth": {
+    "enabled": true
+  }
+}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.GetBoolean("auth.enabled") {
+		t.Fatalf("commented include should not load override.yaml")
+	}
+	if _, ok := cfg.GetOK("auth.admin"); ok {
+		t.Fatalf("commented include should not merge auth.admin")
+	}
+}
+
 func TestIncludeKey_List(t *testing.T) {
 	dir := t.TempDir()
 

@@ -26,15 +26,22 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 		return nil, fmt.Errorf("config: read %s: %w", path, err)
 	}
 
-	incFromLines, cleaned := processIncludes(raw)
 	ext := strings.ToLower(filepath.Ext(path))
 
 	var root map[string]any
+	var incFromLines []string
+	var cleaned []byte
 	switch ext {
 	case ".json":
+		raw, err = stripJSONComments(raw)
+		if err != nil {
+			return nil, fmt.Errorf("config: parse %s: %w", path, err)
+		}
+		incFromLines, cleaned = processIncludes(raw)
 		root, err = parseJSON(cleaned)
 	case ".yaml", ".yml":
 		// YAML treats "#include ..." as a comment, but we strip it for consistency.
+		incFromLines, cleaned = processIncludes(raw)
 		root, err = parseYAML(cleaned)
 	default:
 		return nil, fmt.Errorf("config: unsupported file type: %s", ext)
@@ -176,14 +183,14 @@ func toStringSlice(v any) []string {
 	}
 }
 
-// processIncludes extracts #include directives and returns the cleaned content
-// in a single pass. Lines of the form "#include path" are collected; all other
-// lines (including the original include lines) are kept in the returned content.
+// processIncludes extracts column-zero #include directives and returns the
+// cleaned content in a single pass. Indented "#include ..." text is data (for
+// example YAML block scalar content), not a directive.
 func processIncludes(raw []byte) (incs []string, cleaned []byte) {
 	lines := bytes.Split(raw, []byte{'\n'})
 	filtered := make([][]byte, 0, len(lines))
 	for _, ln := range lines {
-		s := strings.TrimSpace(string(ln))
+		s := string(ln)
 		if strings.HasPrefix(s, "#include ") {
 			p := strings.TrimSpace(strings.TrimPrefix(s, "#include "))
 			if p != "" {
