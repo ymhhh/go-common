@@ -20,11 +20,11 @@ func getDef[T any](defValue []T) T {
 
 // GetInterface returns the raw value at key, or the first default if missing.
 func (c *Tree) GetInterface(key string, defValue ...any) (res any) {
-	v, ok := getPath(c.root, key)
+	val, ok := c.GetOK(key)
 	if !ok {
 		return getDef(defValue)
 	}
-	return v
+	return val.Any()
 }
 
 func (c *Tree) GetString(key string, defValue ...string) (res string) {
@@ -265,7 +265,7 @@ func (c *Tree) GetValuesConfig(key string) Config {
 	if !ok {
 		panic(fmt.Sprintf("config: %q is not a map[string]any (got %T)", key, v))
 	}
-	return &Tree{root: m, baseDir: c.baseDir}
+	return &Tree{root: DeepCopy(m).(map[string]any), baseDir: c.baseDir}
 }
 
 func (c *Tree) SetKeyValue(key string, value any) error {
