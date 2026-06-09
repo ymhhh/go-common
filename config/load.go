@@ -26,8 +26,16 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 		return nil, fmt.Errorf("config: read %s: %w", path, err)
 	}
 
-	incFromLines, cleaned := processIncludes(raw)
 	ext := strings.ToLower(filepath.Ext(path))
+
+	includeInput := raw
+	if ext == ".json" {
+		includeInput, err = stripJSONComments(raw)
+		if err != nil {
+			return nil, fmt.Errorf("config: parse %s: %w", path, err)
+		}
+	}
+	incFromLines, cleaned := processIncludes(includeInput)
 
 	var root map[string]any
 	switch ext {
@@ -176,9 +184,8 @@ func toStringSlice(v any) []string {
 	}
 }
 
-// processIncludes extracts #include directives and returns the cleaned content
-// in a single pass. Lines of the form "#include path" are collected; all other
-// lines (including the original include lines) are kept in the returned content.
+// processIncludes extracts #include directives and returns the cleaned content.
+// Lines of the form "#include path" are collected and omitted from cleaned.
 func processIncludes(raw []byte) (incs []string, cleaned []byte) {
 	lines := bytes.Split(raw, []byte{'\n'})
 	filtered := make([][]byte, 0, len(lines))

@@ -145,6 +145,33 @@ func TestLoad_JSONC_UnterminatedBlockComment(t *testing.T) {
 	}
 }
 
+func TestLoad_JSONC_CommentedIncludesAreIgnored(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "disabled.yaml", `
+danger: true
+`)
+	main := writeFile(t, dir, "main.json", `
+// #include disabled.yaml
+/*
+#include disabled.yaml
+*/
+{
+  "safe": true
+}
+`)
+
+	cfg, err := Load(main)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.GetBoolean("danger") {
+		t.Fatalf("commented include should not be loaded")
+	}
+	if !cfg.GetBoolean("safe") {
+		t.Fatalf("safe value missing")
+	}
+}
+
 func TestLoad_YAML_Ref_Env_Object(t *testing.T) {
 	t.Setenv("ENV", "yaml-env")
 
