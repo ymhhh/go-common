@@ -42,7 +42,7 @@ func (c *Tree) Get(path string) Value {
 		return Value{}
 	}
 	v, _ := getPath(c.root, path)
-	return Value{v: v}
+	return Value{v: DeepCopy(v)}
 }
 
 // GetOK returns the Value and whether the path exists.
@@ -51,7 +51,7 @@ func (c *Tree) GetOK(path string) (Value, bool) {
 		return Value{}, false
 	}
 	v, ok := getPath(c.root, path)
-	return Value{v: v}, ok
+	return Value{v: DeepCopy(v)}, ok
 }
 
 // Set updates a dot path like "a.b.c". Intermediate objects are created as maps.

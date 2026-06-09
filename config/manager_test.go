@@ -177,6 +177,53 @@ func TestManager_Map_Subconfig_Copy_Dump(t *testing.T) {
 	}
 }
 
+func TestManager_MutableGettersReturnCopies(t *testing.T) {
+	tr := &Tree{
+		root: map[string]any{
+			"items": []any{
+				map[string]any{"enabled": true},
+				"keep",
+			},
+			"section": map[string]any{
+				"limit":  "10",
+				"nested": map[string]any{"v": 1},
+			},
+		},
+	}
+	var c Config = tr
+
+	list := c.GetList("items")
+	list[0].(map[string]any)["enabled"] = false
+	list[1] = "changed"
+	if got := c.GetList("items"); got[1] != "keep" || got[0].(map[string]any)["enabled"] != true {
+		t.Fatalf("GetList returned mutable config internals: %#v", got)
+	}
+
+	iface := c.GetInterface("section").(map[string]any)
+	iface["limit"] = "99"
+	iface["nested"].(map[string]any)["v"] = 2
+	if c.GetString("section.limit") != "10" || c.GetInt("section.nested.v") != 1 {
+		t.Fatalf("GetInterface returned mutable config internals: limit=%q nested=%d", c.GetString("section.limit"), c.GetInt("section.nested.v"))
+	}
+
+	fromGet, err := c.Get("section").Map()
+	if err != nil {
+		t.Fatalf("Get(section).Map: %v", err)
+	}
+	fromGet["limit"] = "100"
+	if c.GetString("section.limit") != "10" {
+		t.Fatalf("Get(section).Map returned mutable config internals: %q", c.GetString("section.limit"))
+	}
+
+	sub := c.GetValuesConfig("section")
+	if err := sub.Set("nested.v", 3); err != nil {
+		t.Fatalf("mutate GetValuesConfig result: %v", err)
+	}
+	if c.GetInt("section.nested.v") != 1 {
+		t.Fatalf("GetValuesConfig returned mutable config internals: %d", c.GetInt("section.nested.v"))
+	}
+}
+
 func TestManager_Object(t *testing.T) {
 	type obj struct {
 		N int `json:"n"`
