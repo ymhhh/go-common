@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -24,9 +25,9 @@ func ToInt64(value any) (int64, error) {
 	case int8:
 		return int64(v), nil
 	case uint:
-		return int64(v), nil
+		return uint64ToInt64(uint64(v))
 	case uint64:
-		return int64(v), nil
+		return uint64ToInt64(v)
 	case uint32:
 		return int64(v), nil
 	case uint16:
@@ -63,11 +64,11 @@ func ToInt(value any) (int, error) {
 	case int8:
 		return int(v), nil
 	case uint:
-		return int(v), nil
+		return uint64ToInt(uint64(v))
 	case uint64:
-		return int(v), nil
+		return uint64ToInt(v)
 	case uint32:
-		return int(v), nil
+		return uint64ToInt(uint64(v))
 	case uint16:
 		return int(v), nil
 	case uint8:
@@ -84,4 +85,18 @@ func ToInt(value any) (int, error) {
 	default:
 		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
 	}
+}
+
+func uint64ToInt64(v uint64) (int64, error) {
+	if v > uint64(math.MaxInt64) {
+		return 0, fmt.Errorf("types: %d overflows int64", v)
+	}
+	return int64(v), nil
+}
+
+func uint64ToInt(v uint64) (int, error) {
+	if v > uint64(math.MaxInt) {
+		return 0, fmt.Errorf("types: %d overflows int", v)
+	}
+	return int(v), nil
 }

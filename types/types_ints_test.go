@@ -32,6 +32,13 @@ func TestToInt64(t *testing.T) {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
 	}
 
+	if got, err := ToInt64(uint64(1<<63 - 1)); err != nil || got != 1<<63-1 {
+		t.Fatalf("max uint64 fitting int64: got=%d err=%v", got, err)
+	}
+	if got, err := ToInt64(uint64(1 << 63)); err == nil {
+		t.Fatalf("uint64 overflow should error, got=%d", got)
+	}
+
 	// invalid type
 	if _, err := ToInt64(true); err == nil {
 		t.Fatalf("expected error for bool")
@@ -62,9 +69,16 @@ func TestToInt(t *testing.T) {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
 	}
 
+	maxInt := uint64(^uint(0) >> 1)
+	if got, err := ToInt(maxInt); err != nil || got != int(maxInt) {
+		t.Fatalf("max uint64 fitting int: got=%d err=%v", got, err)
+	}
+	if got, err := ToInt(maxInt + 1); err == nil {
+		t.Fatalf("uint64 overflow should error, got=%d", got)
+	}
+
 	// invalid type
 	if _, err := ToInt([]int{1}); err == nil {
 		t.Fatalf("expected error for slice")
 	}
 }
-
