@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 )
 
@@ -30,6 +31,20 @@ func TestToInt64(t *testing.T) {
 	// json.Number is type string kind
 	if got, err := ToInt64(json.Number("56")); err != nil || got != 56 {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
+	}
+
+	// integral floats are accepted, but unsafe float-to-int truncation is not
+	if got, err := ToInt64(float64(78)); err != nil || got != 78 {
+		t.Fatalf("integral float64: got=%d err=%v", got, err)
+	}
+	if _, err := ToInt64(12.5); err == nil {
+		t.Fatalf("expected error for fractional float64")
+	}
+	if _, err := ToInt64(math.Inf(1)); err == nil {
+		t.Fatalf("expected error for infinite float64")
+	}
+	if _, err := ToInt64(float64(math.MaxInt64)); err == nil {
+		t.Fatalf("expected error for out-of-range float64")
 	}
 
 	// invalid type
@@ -62,9 +77,22 @@ func TestToInt(t *testing.T) {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
 	}
 
+	// integral floats are accepted, but unsafe float-to-int truncation is not
+	if got, err := ToInt(float32(78)); err != nil || got != 78 {
+		t.Fatalf("integral float32: got=%d err=%v", got, err)
+	}
+	if _, err := ToInt(float32(12.5)); err == nil {
+		t.Fatalf("expected error for fractional float32")
+	}
+	if _, err := ToInt(math.NaN()); err == nil {
+		t.Fatalf("expected error for NaN float64")
+	}
+	if _, err := ToInt(-float64(math.MinInt)); err == nil {
+		t.Fatalf("expected error for out-of-range float64")
+	}
+
 	// invalid type
 	if _, err := ToInt([]int{1}); err == nil {
 		t.Fatalf("expected error for slice")
 	}
 }
-

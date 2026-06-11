@@ -224,6 +224,33 @@ func TestManager_MutableGettersReturnCopies(t *testing.T) {
 	}
 }
 
+func TestSet_DoesNotAliasMutableInputs(t *testing.T) {
+	tr := &Tree{root: map[string]any{}}
+	patch := map[string]any{
+		"enabled": true,
+		"rules":   []any{"deny"},
+		"nested":  map[string]any{"limit": 10},
+	}
+
+	if err := tr.Set("auth", patch); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	patch["enabled"] = false
+	patch["rules"].([]any)[0] = "allow"
+	patch["nested"].(map[string]any)["limit"] = 99
+
+	if got := tr.GetBoolean("auth.enabled"); !got {
+		t.Fatalf("Set stored caller-owned map by reference: enabled=%v", got)
+	}
+	if got := tr.GetList("auth.rules"); len(got) != 1 || got[0] != "deny" {
+		t.Fatalf("Set stored caller-owned slice by reference: %#v", got)
+	}
+	if got := tr.GetInt("auth.nested.limit"); got != 10 {
+		t.Fatalf("Set stored caller-owned nested map by reference: %d", got)
+	}
+}
+
 func TestManager_Object(t *testing.T) {
 	type obj struct {
 		N int `json:"n"`

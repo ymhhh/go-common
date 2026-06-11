@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -34,9 +35,9 @@ func ToInt64(value any) (int64, error) {
 	case uint8:
 		return int64(v), nil
 	case float64:
-		return int64(v), nil
+		return float64ToInt64(v, "float64")
 	case float32:
-		return int64(v), nil
+		return float64ToInt64(float64(v), "float32")
 	case json.Number:
 		return v.Int64()
 	case string:
@@ -73,9 +74,9 @@ func ToInt(value any) (int, error) {
 	case uint8:
 		return int(v), nil
 	case float64:
-		return int(v), nil
+		return float64ToInt(v, "float64")
 	case float32:
-		return int(v), nil
+		return float64ToInt(float64(v), "float32")
 	case json.Number:
 		i, err := v.Int64()
 		return int(i), err
@@ -84,4 +85,18 @@ func ToInt(value any) (int, error) {
 	default:
 		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
 	}
+}
+
+func float64ToInt64(v float64, typeName string) (int64, error) {
+	if math.IsNaN(v) || math.IsInf(v, 0) || math.Trunc(v) != v || v < float64(math.MinInt64) || v >= -float64(math.MinInt64) {
+		return 0, fmt.Errorf("types: cannot convert %s %v to int64", typeName, v)
+	}
+	return int64(v), nil
+}
+
+func float64ToInt(v float64, typeName string) (int, error) {
+	if math.IsNaN(v) || math.IsInf(v, 0) || math.Trunc(v) != v || v < float64(math.MinInt) || v >= -float64(math.MinInt) {
+		return 0, fmt.Errorf("types: cannot convert %s %v to int", typeName, v)
+	}
+	return int(v), nil
 }

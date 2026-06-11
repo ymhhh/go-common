@@ -60,6 +60,6 @@ func setPath(root map[string]any, path string, value any) error {
 		}
 		cur = nm
 	}
-	cur[parts[len(parts)-1]] = value
+	cur[parts[len(parts)-1]] = DeepCopy(value)
 	return nil
 }
