@@ -97,6 +97,13 @@ func parseJSON(raw []byte) (map[string]any, error) {
 	if err := dec.Decode(&v); err != nil {
 		return nil, err
 	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("config: json must contain a single top-level object")
+		}
+		return nil, err
+	}
 	m, ok := normalize(v).(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("config: json root must be object")
