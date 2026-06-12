@@ -342,6 +342,18 @@ a:
 	}
 }
 
+func TestLoad_JSONRejectsTrailingTopLevelValue(t *testing.T) {
+	dir := t.TempDir()
+	main := writeFile(t, dir, "main.json", `
+{"auth": {"enabled": false}}
+{"auth": {"enabled": true}}
+`)
+
+	if _, err := Load(main); err == nil {
+		t.Fatalf("expected trailing JSON value to be rejected")
+	}
+}
+
 func TestLoad_YAML_CompositeReferenceIsDeepCopied(t *testing.T) {
 	dir := t.TempDir()
 	main := writeFile(t, dir, "main.yaml", `
