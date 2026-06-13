@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,12 @@ type rotateConfig struct {
 	MaxBackups int
 	MaxAgeDays int
 	Compress   bool
+}
+
+type backupFile struct {
+	path    string
+	index   int
+	modTime time.Time
 }
 
 func normalizeRotateConfig(cfg *Config) rotateConfig {
@@ -62,26 +69,25 @@ func newRotatingWriter(path string, rc rotateConfig) (io.Writer, io.Closer, erro
 func buildPostRotate(mainPath string, rc rotateConfig) func(fileName, newFile string) {
 	return func(_, newFile string) {
 		if rc.Compress {
-			compressor.CompressBackground(newFile, nil)
+			compressor.CompressBackground(newFile, func(_ *compressor.Report) {
+				purgeBackups(mainPath, rc)
+			})
+			return
 		}
-		purgeExpiredBackups(mainPath, rc.MaxAgeDays)
+		purgeBackups(mainPath, rc)
 	}
 }
 
-func purgeExpiredBackups(mainPath string, maxAgeDays int) {
-	if maxAgeDays <= 0 {
-		return
-	}
-
+func listBackupFiles(mainPath string) ([]backupFile, error) {
 	dir := filepath.Dir(mainPath)
 	prefix := backupPrefix(filepath.Base(mainPath))
-	cutoff := time.Now().Add(-time.Duration(maxAgeDays) * 24 * time.Hour)
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return
+		return nil, err
 	}
 
+	files := make([]backupFile, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasPrefix(name, prefix) {
@@ -91,7 +97,8 @@ func purgeExpiredBackups(mainPath string, maxAgeDays int) {
 		suffix := strings.TrimPrefix(name, prefix)
 		suffix = strings.TrimSuffix(suffix, ".gz")
 		suffix = strings.TrimSuffix(suffix, ".log")
-		if _, err := strconv.Atoi(suffix); err != nil {
+		index, err := strconv.Atoi(suffix)
+		if err != nil {
 			continue
 		}
 
@@ -99,8 +106,54 @@ func purgeExpiredBackups(mainPath string, maxAgeDays int) {
 		if err != nil {
 			continue
 		}
-		if info.ModTime().Before(cutoff) {
-			_ = os.Remove(filepath.Join(dir, name))
+
+		files = append(files, backupFile{
+			path:    filepath.Join(dir, name),
+			index:   index,
+			modTime: info.ModTime(),
+		})
+	}
+	return files, nil
+}
+
+func purgeBackups(mainPath string, rc rotateConfig) {
+	files, err := listBackupFiles(mainPath)
+	if err != nil {
+		return
+	}
+
+	cutoff := time.Now().Add(-time.Duration(rc.MaxAgeDays) * 24 * time.Hour)
+	remaining := make([]backupFile, 0, len(files))
+
+	for _, file := range files {
+		if rc.MaxAgeDays > 0 && file.modTime.Before(cutoff) {
+			_ = os.Remove(file.path)
+			continue
+		}
+		remaining = append(remaining, file)
+	}
+
+	if !rc.Compress || rc.MaxBackups <= 0 {
+		return
+	}
+
+	byIndex := make(map[int][]backupFile, len(remaining))
+	for _, file := range remaining {
+		byIndex[file.index] = append(byIndex[file.index], file)
+	}
+
+	indices := make([]int, 0, len(byIndex))
+	for index := range byIndex {
+		indices = append(indices, index)
+	}
+	sort.Ints(indices)
+
+	for _, index := range indices {
+		if index <= rc.MaxBackups {
+			continue
+		}
+		for _, file := range byIndex[index] {
+			_ = os.Remove(file.path)
 		}
 	}
 }
