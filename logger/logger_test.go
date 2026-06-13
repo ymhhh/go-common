@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/ymhhh/go-common/config"
-	"gopkg.in/natefinch/lumberjack.v2"
+	"golift.io/rotatorr"
 )
 
 func TestFromConfig_JSON_stdout(t *testing.T) {
@@ -124,12 +124,16 @@ func TestFromConfig_FileRotate(t *testing.T) {
 	}
 	defer func() { _ = l.Close() }()
 
-	if _, ok := l.Out.(*lumberjack.Logger); !ok {
+	rotator, ok := l.Out.(*rotatorr.Logger)
+	if !ok {
 		t.Fatalf("out: %T", l.Out)
+	}
+	if rotator == nil {
+		t.Fatal("rotator is nil")
 	}
 }
 
-func TestFromConfig_FileRotateValidatesOutputPath(t *testing.T) {
+func TestFromConfig_FileRotateCreatesParentDir(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing", "app.log")
 	opts := config.Options{
 		"logger": map[string]any{
@@ -146,9 +150,69 @@ func TestFromConfig_FileRotateValidatesOutputPath(t *testing.T) {
 	c := opts.ToConfig()
 
 	l, err := FromConfig(c)
-	if err == nil {
-		defer func() { _ = l.Close() }()
-		t.Fatal("FromConfig succeeded for rotated output with missing parent directory")
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	l.Info("rotated parent dir")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("rotated output did not create parent directory: %v", err)
+	}
+}
+
+func TestRotatingWriter_NoSymlink(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	l, err := FromConfig(rotateLoggerConfig(path))
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	l.Info("before rotate")
+
+	rotator, ok := l.Out.(*rotatorr.Logger)
+	if !ok {
+		t.Fatalf("out: %T", l.Out)
+	}
+	if _, err := rotator.Rotate(); err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatalf("Lstat main log: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("main log path is a symlink: %s", path)
+	}
+}
+
+func TestRotatingWriter_IntegerBackup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	l, err := FromConfig(rotateLoggerConfig(path))
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	l.Info("trigger backup")
+
+	rotator, ok := l.Out.(*rotatorr.Logger)
+	if !ok {
+		t.Fatalf("out: %T", l.Out)
+	}
+	if _, err := rotator.Rotate(); err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+
+	backup := filepath.Join(filepath.Dir(path), "app.1.log")
+	info, err := os.Lstat(backup)
+	if err != nil {
+		t.Fatalf("backup log missing: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("backup log is a symlink: %s", backup)
 	}
 }
 
@@ -296,6 +360,24 @@ func fileLoggerConfig(path string) config.Config {
 			"level":  "info",
 			"format": "text",
 			"output": "file:" + path,
+		},
+	}
+	return opts.ToConfig()
+}
+
+func rotateLoggerConfig(path string) config.Config {
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"enabled":    true,
+					"maxSizeMB":  1,
+					"maxBackups": 2,
+				},
+			},
 		},
 	}
 	return opts.ToConfig()
