@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/ymhhh/go-common/types"
@@ -201,7 +203,10 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		}
 		return getDef(defValue)
 	case float64:
-		return big.NewInt(int64(x))
+		if n, ok := float64ByteSize(x); ok {
+			return n
+		}
+		return getDef(defValue)
 	}
 
 	s, err := val.String()
@@ -216,7 +221,17 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 }
 
 func jsonNumberByteSize(n json.Number) (*big.Int, bool) {
-	s := n.String()
+	return decimalByteSize(n.String())
+}
+
+func float64ByteSize(n float64) (*big.Int, bool) {
+	if math.IsNaN(n) || math.IsInf(n, 0) {
+		return nil, false
+	}
+	return decimalByteSize(strconv.FormatFloat(n, 'g', -1, 64))
+}
+
+func decimalByteSize(s string) (*big.Int, bool) {
 	if i, ok := new(big.Int).SetString(s, 10); ok {
 		return i, true
 	}
@@ -225,7 +240,10 @@ func jsonNumberByteSize(n json.Number) (*big.Int, bool) {
 	if err != nil {
 		return nil, false
 	}
-	i, _ := f.Int(nil)
+	i, acc := f.Int(nil)
+	if acc != big.Exact {
+		return nil, false
+	}
 	return i, true
 }
 
