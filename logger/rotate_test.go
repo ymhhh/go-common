@@ -53,7 +53,7 @@ func TestPurgeBackups_EnforcesMaxBackupsForCompressedArchives(t *testing.T) {
 		MaxBackups: 2,
 		MaxAgeDays: 7,
 		Compress:   true,
-	})
+	}, "")
 
 	for _, name := range []string{"app.log.1.gz", "app.log.2.gz"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
@@ -116,9 +116,72 @@ func TestPurgeBackups_RemovesExpiredBackupsWithoutCompress(t *testing.T) {
 		MaxBackups: 7,
 		MaxAgeDays: 1,
 		Compress:   false,
-	})
+	}, "")
 
 	if _, err := os.Stat(expired); !os.IsNotExist(err) {
 		t.Fatalf("expected expired backup to be removed, err=%v", err)
+	}
+}
+
+func TestPurgeBackups_EnforcesMaxBackupsWithoutCompress(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "app.log")
+
+	backups := []string{"app.log.1", "app.log.2", "app.log.3", "app.log.4"}
+	for _, name := range backups {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte("backup"), 0o644); err != nil {
+			t.Fatalf("write backup %s: %v", name, err)
+		}
+	}
+
+	purgeBackups(mainPath, rotateConfig{
+		MaxBackups: 2,
+		MaxAgeDays: 7,
+		Compress:   false,
+	}, "")
+
+	for _, name := range []string{"app.log.1", "app.log.2"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatalf("expected backup %s to remain: %v", name, err)
+		}
+	}
+	for _, name := range []string{"app.log.3", "app.log.4"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected backup %s to be removed, err=%v", name, err)
+		}
+	}
+}
+
+func TestPurgeBackups_SkipsFileBeingCompressed(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "app.log")
+	compressing := mainPath + ".1"
+
+	backups := []string{"app.log.1", "app.log.2", "app.log.3"}
+	for _, name := range backups {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte("backup"), 0o644); err != nil {
+			t.Fatalf("write backup %s: %v", name, err)
+		}
+	}
+
+	oldTime := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(compressing, oldTime, oldTime); err != nil {
+		t.Fatalf("chtimes compressing backup: %v", err)
+	}
+
+	purgeBackups(mainPath, rotateConfig{
+		MaxBackups: 2,
+		MaxAgeDays: 1,
+		Compress:   true,
+	}, compressing)
+
+	if _, err := os.Stat(compressing); err != nil {
+		t.Fatalf("file being compressed should not be deleted: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "app.log.3")); !os.IsNotExist(err) {
+		t.Fatalf("expected app.log.3 to be removed, err=%v", err)
 	}
 }

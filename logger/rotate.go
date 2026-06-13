@@ -116,11 +116,11 @@ func buildPostRotate(mainPath string, rc rotateConfig) func(fileName, newFile st
 	return func(_, newFile string) {
 		if rc.Compress {
 			compressor.CompressBackground(newFile, func(_ *compressor.Report) {
-				purgeBackups(mainPath, rc)
+				purgeBackups(mainPath, rc, newFile)
 			})
 			return
 		}
-		purgeBackups(mainPath, rc)
+		purgeBackups(mainPath, rc, "")
 	}
 }
 
@@ -245,7 +245,7 @@ func listBackupFiles(mainPath string) ([]backupFile, error) {
 	return files, nil
 }
 
-func purgeBackups(mainPath string, rc rotateConfig) {
+func purgeBackups(mainPath string, rc rotateConfig, skipFile string) {
 	files, err := listBackupFiles(mainPath)
 	if err != nil {
 		return
@@ -255,6 +255,10 @@ func purgeBackups(mainPath string, rc rotateConfig) {
 	remaining := make([]backupFile, 0, len(files))
 
 	for _, file := range files {
+		if skipFile != "" && file.path == skipFile {
+			remaining = append(remaining, file)
+			continue
+		}
 		if rc.MaxAgeDays > 0 && file.modTime.Before(cutoff) {
 			_ = os.Remove(file.path)
 			continue
@@ -262,7 +266,7 @@ func purgeBackups(mainPath string, rc rotateConfig) {
 		remaining = append(remaining, file)
 	}
 
-	if !rc.Compress || rc.MaxBackups <= 0 {
+	if rc.MaxBackups <= 0 {
 		return
 	}
 
@@ -282,6 +286,9 @@ func purgeBackups(mainPath string, rc rotateConfig) {
 			continue
 		}
 		for _, file := range byIndex[index] {
+			if skipFile != "" && file.path == skipFile {
+				continue
+			}
 			_ = os.Remove(file.path)
 		}
 	}
