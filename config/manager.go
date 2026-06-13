@@ -162,9 +162,6 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 	if i, err := val.Int(); err == nil {
 		return time.Duration(i)
 	}
-	if f, err := val.Float64(); err == nil {
-		return time.Duration(f)
-	}
 
 	s, err := val.String()
 	if err != nil {

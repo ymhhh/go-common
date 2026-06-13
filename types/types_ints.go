@@ -25,9 +25,9 @@ func ToInt64(value any) (int64, error) {
 	case int8:
 		return int64(v), nil
 	case uint:
-		return int64(v), nil
+		return uint64ToInt64(uint64(v), "uint")
 	case uint64:
-		return int64(v), nil
+		return uint64ToInt64(v, "uint64")
 	case uint32:
 		return int64(v), nil
 	case uint16:
@@ -56,19 +56,19 @@ func ToInt(value any) (int, error) {
 	case int:
 		return v, nil
 	case int64:
-		return int(v), nil
+		return int64ToInt(v, "int64")
 	case int32:
-		return int(v), nil
+		return int64ToInt(int64(v), "int32")
 	case int16:
 		return int(v), nil
 	case int8:
 		return int(v), nil
 	case uint:
-		return int(v), nil
+		return uint64ToInt(uint64(v), "uint")
 	case uint64:
-		return int(v), nil
+		return uint64ToInt(v, "uint64")
 	case uint32:
-		return int(v), nil
+		return uint64ToInt(uint64(v), "uint32")
 	case uint16:
 		return int(v), nil
 	case uint8:
@@ -79,12 +79,36 @@ func ToInt(value any) (int, error) {
 		return float64ToInt(float64(v), "float32")
 	case json.Number:
 		i, err := v.Int64()
-		return int(i), err
+		if err != nil {
+			return 0, err
+		}
+		return int64ToInt(i, "json.Number")
 	case string:
 		return strconv.Atoi(v)
 	default:
 		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
 	}
+}
+
+func uint64ToInt64(v uint64, typeName string) (int64, error) {
+	if v > uint64(math.MaxInt64) {
+		return 0, fmt.Errorf("types: cannot convert %s %d to int64", typeName, v)
+	}
+	return int64(v), nil
+}
+
+func int64ToInt(v int64, typeName string) (int, error) {
+	if v < int64(math.MinInt) || v > int64(math.MaxInt) {
+		return 0, fmt.Errorf("types: cannot convert %s %d to int", typeName, v)
+	}
+	return int(v), nil
+}
+
+func uint64ToInt(v uint64, typeName string) (int, error) {
+	if v > uint64(math.MaxInt) {
+		return 0, fmt.Errorf("types: cannot convert %s %d to int", typeName, v)
+	}
+	return int(v), nil
 }
 
 func float64ToInt64(v float64, typeName string) (int64, error) {
