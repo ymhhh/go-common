@@ -7,11 +7,41 @@ import (
 	"time"
 )
 
+func TestSuffixRotator_RotateUsesTrailingIndex(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "app.log")
+
+	if err := os.WriteFile(mainPath, []byte("current"), 0o644); err != nil {
+		t.Fatalf("write main log: %v", err)
+	}
+	if err := os.WriteFile(mainPath+".1", []byte("first"), 0o644); err != nil {
+		t.Fatalf("write first backup: %v", err)
+	}
+
+	rotator := &suffixRotator{FileCount: 2}
+	newFile, err := rotator.Rotate(mainPath)
+	if err != nil {
+		t.Fatalf("Rotate: %v", err)
+	}
+	if newFile != mainPath+".1" {
+		t.Fatalf("newFile: got %q want %q", newFile, mainPath+".1")
+	}
+
+	for _, name := range []string{"app.log.1", "app.log.2"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatalf("expected backup %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(mainPath); !os.IsNotExist(err) {
+		t.Fatalf("expected active log to be rotated, err=%v", err)
+	}
+}
+
 func TestPurgeBackups_EnforcesMaxBackupsForCompressedArchives(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
 
-	backups := []string{"app.1.log.gz", "app.2.log.gz", "app.3.log.gz"}
+	backups := []string{"app.log.1.gz", "app.log.2.gz", "app.log.3.gz"}
 	for _, name := range backups {
 		path := filepath.Join(dir, name)
 		if err := os.WriteFile(path, []byte("backup"), 0o644); err != nil {
@@ -25,20 +55,20 @@ func TestPurgeBackups_EnforcesMaxBackupsForCompressedArchives(t *testing.T) {
 		Compress:   true,
 	})
 
-	for _, name := range []string{"app.1.log.gz", "app.2.log.gz"} {
+	for _, name := range []string{"app.log.1.gz", "app.log.2.gz"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Fatalf("expected backup %s to remain: %v", name, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(dir, "app.3.log.gz")); !os.IsNotExist(err) {
-		t.Fatalf("expected app.3.log.gz to be removed, err=%v", err)
+	if _, err := os.Stat(filepath.Join(dir, "app.log.3.gz")); !os.IsNotExist(err) {
+		t.Fatalf("expected app.log.3.gz to be removed, err=%v", err)
 	}
 }
 
 func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
-	rotating := filepath.Join(dir, "app.1.log")
+	rotating := mainPath + ".1"
 
 	if err := os.WriteFile(rotating, []byte("rotating backup"), 0o644); err != nil {
 		t.Fatalf("write rotating backup: %v", err)
@@ -72,7 +102,7 @@ func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
 func TestPurgeBackups_RemovesExpiredBackupsWithoutCompress(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
-	expired := filepath.Join(dir, "app.9.log")
+	expired := mainPath + ".9"
 
 	if err := os.WriteFile(expired, []byte("old"), 0o644); err != nil {
 		t.Fatalf("write expired backup: %v", err)

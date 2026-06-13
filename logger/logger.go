@@ -42,7 +42,7 @@ type Config struct {
 			MaxBackups int  `json:"maxBackups" yaml:"maxBackups"` // default 7
 			MaxAgeDays int  `json:"maxAgeDays" yaml:"maxAgeDays"` // default 7
 			Compress   bool `json:"compress" yaml:"compress"`
-			LocalTime  bool `json:"localTime" yaml:"localTime"` // ignored; introtator uses integer suffixes
+			LocalTime  bool `json:"localTime" yaml:"localTime"` // ignored; backups use trailing integer suffixes
 		} `json:"rotate" yaml:"rotate"`
 	} `json:"file" yaml:"file"`
 

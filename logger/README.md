@@ -32,10 +32,10 @@ logger:
 
 ### 日志滚动
 
-滚动由 [`golift.io/rotatorr`](https://github.com/golift/rotatorr) 的 `introtator` 实现：
+滚动由 [`golift.io/rotatorr`](https://github.com/golift/rotatorr) 配合自定义后缀 rotator 实现：
 
 - **主日志路径**（`output` / `file.path` 解析后的路径）始终是**真实文件**，不创建软链接
-- **备份命名**：`app.1.log`、`app.2.log`（启用 `compress` 后为 `app.1.log.gz`）
+- **备份命名**：`app.log.1`、`app.log.2`（启用 `compress` 后为 `app.log.1.gz`）
 - **logbook 采集**：请直接采集主日志真实路径（如 `/var/log/app.log`），勿依赖 symlink
 
 ### 使用示例

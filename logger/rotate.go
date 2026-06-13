@@ -12,7 +12,6 @@ import (
 
 	"golift.io/rotatorr"
 	"golift.io/rotatorr/compressor"
-	"golift.io/rotatorr/introtator"
 )
 
 type rotateConfig struct {
@@ -26,6 +25,53 @@ type backupFile struct {
 	path    string
 	index   int
 	modTime time.Time
+}
+
+// suffixRotator rotates backups as app.log.1, app.log.2 (number suffix).
+type suffixRotator struct {
+	FileCount  int
+	PostRotate func(fileName, newFile string)
+}
+
+func (s *suffixRotator) Dirs(fileName string) ([]string, error) {
+	return []string{filepath.Dir(fileName)}, nil
+}
+
+func (s *suffixRotator) Post(fileName, newFile string) {
+	if s.PostRotate != nil {
+		s.PostRotate(fileName, newFile)
+	}
+}
+
+func (s *suffixRotator) Rotate(fileName string) (string, error) {
+	indices, err := backupIndices(fileName)
+	if err != nil {
+		return "", err
+	}
+
+	maxIndex := 0
+	for _, index := range indices {
+		if index > maxIndex {
+			maxIndex = index
+		}
+	}
+
+	for index := maxIndex; index >= 1; index-- {
+		if err := bumpBackup(fileName, index); err != nil {
+			return "", err
+		}
+	}
+
+	newFile := backupPath(fileName, 1)
+	if err := os.Rename(fileName, newFile); err != nil {
+		return "", fmt.Errorf("rotate log file: %w", err)
+	}
+
+	if err := removeBackupsAbove(fileName, s.FileCount); err != nil {
+		return "", err
+	}
+
+	return newFile, nil
 }
 
 func normalizeRotateConfig(cfg *Config) rotateConfig {
@@ -48,7 +94,7 @@ func normalizeRotateConfig(cfg *Config) rotateConfig {
 }
 
 func newRotatingWriter(path string, rc rotateConfig) (io.Writer, io.Closer, error) {
-	layout := &introtator.Layout{
+	layout := &suffixRotator{
 		FileCount:  rc.MaxBackups,
 		PostRotate: buildPostRotate(path, rc),
 	}
@@ -78,9 +124,100 @@ func buildPostRotate(mainPath string, rc rotateConfig) func(fileName, newFile st
 	}
 }
 
+func backupNamePrefix(mainPath string) string {
+	return filepath.Base(mainPath) + "."
+}
+
+func backupPath(mainPath string, index int) string {
+	return mainPath + "." + strconv.Itoa(index)
+}
+
+func backupIndices(mainPath string) ([]int, error) {
+	dir := filepath.Dir(mainPath)
+	prefix := backupNamePrefix(mainPath)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[int]struct{})
+	for _, entry := range entries {
+		index, ok := parseBackupIndex(entry.Name(), prefix)
+		if !ok {
+			continue
+		}
+		seen[index] = struct{}{}
+	}
+
+	indices := make([]int, 0, len(seen))
+	for index := range seen {
+		indices = append(indices, index)
+	}
+	sort.Ints(indices)
+	return indices, nil
+}
+
+func parseBackupIndex(name, prefix string) (int, bool) {
+	if !strings.HasPrefix(name, prefix) {
+		return 0, false
+	}
+
+	suffix := strings.TrimPrefix(name, prefix)
+	suffix = strings.TrimSuffix(suffix, ".gz")
+	index, err := strconv.Atoi(suffix)
+	if err != nil || index <= 0 {
+		return 0, false
+	}
+	return index, true
+}
+
+func bumpBackup(mainPath string, index int) error {
+	for _, path := range []string{backupPath(mainPath, index), backupPath(mainPath, index) + ".gz"} {
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+
+		dst := backupPath(mainPath, index+1)
+		if strings.HasSuffix(path, ".gz") {
+			dst += ".gz"
+		}
+
+		_ = os.Remove(dst)
+		if err := os.Rename(path, dst); err != nil {
+			return fmt.Errorf("rotate backup %q -> %q: %w", path, dst, err)
+		}
+	}
+	return nil
+}
+
+func removeBackupsAbove(mainPath string, maxBackups int) error {
+	if maxBackups < 1 {
+		return nil
+	}
+
+	indices, err := backupIndices(mainPath)
+	if err != nil {
+		return err
+	}
+
+	for _, index := range indices {
+		if index <= maxBackups {
+			continue
+		}
+		for _, path := range []string{backupPath(mainPath, index), backupPath(mainPath, index) + ".gz"} {
+			_ = os.Remove(path)
+		}
+	}
+	return nil
+}
+
 func listBackupFiles(mainPath string) ([]backupFile, error) {
 	dir := filepath.Dir(mainPath)
-	prefix := backupPrefix(filepath.Base(mainPath))
+	prefix := backupNamePrefix(mainPath)
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -89,16 +226,8 @@ func listBackupFiles(mainPath string) ([]backupFile, error) {
 
 	files := make([]backupFile, 0, len(entries))
 	for _, entry := range entries {
-		name := entry.Name()
-		if !strings.HasPrefix(name, prefix) {
-			continue
-		}
-
-		suffix := strings.TrimPrefix(name, prefix)
-		suffix = strings.TrimSuffix(suffix, ".gz")
-		suffix = strings.TrimSuffix(suffix, ".log")
-		index, err := strconv.Atoi(suffix)
-		if err != nil {
+		index, ok := parseBackupIndex(entry.Name(), prefix)
+		if !ok {
 			continue
 		}
 
@@ -108,7 +237,7 @@ func listBackupFiles(mainPath string) ([]backupFile, error) {
 		}
 
 		files = append(files, backupFile{
-			path:    filepath.Join(dir, name),
+			path:    filepath.Join(dir, entry.Name()),
 			index:   index,
 			modTime: info.ModTime(),
 		})
@@ -156,8 +285,4 @@ func purgeBackups(mainPath string, rc rotateConfig) {
 			_ = os.Remove(file.path)
 		}
 	}
-}
-
-func backupPrefix(baseName string) string {
-	return strings.TrimSuffix(baseName, ".log") + "."
 }

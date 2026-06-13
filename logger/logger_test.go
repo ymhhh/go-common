@@ -206,7 +206,7 @@ func TestRotatingWriter_IntegerBackup(t *testing.T) {
 		t.Fatalf("Rotate: %v", err)
 	}
 
-	backup := filepath.Join(filepath.Dir(path), "app.1.log")
+	backup := path + ".1"
 	info, err := os.Lstat(backup)
 	if err != nil {
 		t.Fatalf("backup log missing: %v", err)
