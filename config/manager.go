@@ -232,19 +232,11 @@ func float64ByteSize(n float64) (*big.Int, bool) {
 }
 
 func decimalByteSize(s string) (*big.Int, bool) {
-	if i, ok := new(big.Int).SetString(s, 10); ok {
-		return i, true
-	}
-
-	f, _, err := big.ParseFloat(s, 10, 256, big.ToZero)
-	if err != nil {
+	r, ok := new(big.Rat).SetString(s)
+	if !ok || r.Denom().Cmp(big.NewInt(1)) != 0 {
 		return nil, false
 	}
-	i, acc := f.Int(nil)
-	if acc != big.Exact {
-		return nil, false
-	}
-	return i, true
+	return new(big.Int).Set(r.Num()), true
 }
 
 func (c *Tree) GetMap(key string) Options {

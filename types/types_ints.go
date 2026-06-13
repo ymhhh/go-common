@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 )
@@ -39,7 +40,7 @@ func ToInt64(value any) (int64, error) {
 	case float32:
 		return float64ToInt64(float64(v), "float32")
 	case json.Number:
-		return v.Int64()
+		return jsonNumberToInt64(v)
 	case string:
 		return strconv.ParseInt(v, 10, 64)
 	default:
@@ -78,7 +79,7 @@ func ToInt(value any) (int, error) {
 	case float32:
 		return float64ToInt(float64(v), "float32")
 	case json.Number:
-		i, err := v.Int64()
+		i, err := jsonNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
@@ -109,6 +110,18 @@ func uint64ToInt(v uint64, typeName string) (int, error) {
 		return 0, fmt.Errorf("types: cannot convert %s %d to int", typeName, v)
 	}
 	return int(v), nil
+}
+
+func jsonNumberToInt64(v json.Number) (int64, error) {
+	if i, err := v.Int64(); err == nil {
+		return i, nil
+	}
+
+	r, ok := new(big.Rat).SetString(v.String())
+	if !ok || r.Denom().Cmp(big.NewInt(1)) != 0 || !r.Num().IsInt64() {
+		return 0, fmt.Errorf("types: cannot convert json.Number %q to int64", v.String())
+	}
+	return r.Num().Int64(), nil
 }
 
 func float64ToInt64(v float64, typeName string) (int64, error) {
