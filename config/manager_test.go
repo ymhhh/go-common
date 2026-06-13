@@ -159,6 +159,29 @@ func TestManager_GetByteSize_JSONNumber(t *testing.T) {
 	}
 }
 
+func TestManager_GetByteSizeRejectsUnsafeNumericConversions(t *testing.T) {
+	hugeWant, ok := new(big.Int).SetString("100000000000000000000", 10)
+	if !ok {
+		t.Fatalf("invalid huge test value")
+	}
+	def := big.NewInt(99)
+	c := newTestTree(map[string]any{
+		"fractional":      float64(1.5),
+		"json_fractional": json.Number("1.5"),
+		"huge":            float64(1e20),
+	})
+
+	if got := c.GetByteSize("fractional", def); got == nil || got.Cmp(def) != 0 {
+		t.Fatalf("fractional byte size should fall back to default, got %v", got)
+	}
+	if got := c.GetByteSize("json_fractional", def); got == nil || got.Cmp(def) != 0 {
+		t.Fatalf("fractional JSON byte size should fall back to default, got %v", got)
+	}
+	if got := c.GetByteSize("huge"); got == nil || got.Cmp(hugeWant) != 0 {
+		t.Fatalf("huge byte size should not narrow through int64: got=%v want=%v", got, hugeWant)
+	}
+}
+
 func TestManager_Map_Subconfig_Copy_Dump(t *testing.T) {
 	tr := &Tree{
 		root: map[string]any{
