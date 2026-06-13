@@ -33,6 +33,11 @@ func TestToInt64(t *testing.T) {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
 	}
 
+	// unsigned values beyond int64 must not wrap negative
+	if _, err := ToInt64(uint64(math.MaxInt64) + 1); err == nil {
+		t.Fatalf("expected error for overflowing uint64")
+	}
+
 	// integral floats are accepted, but unsafe float-to-int truncation is not
 	if got, err := ToInt64(float64(78)); err != nil || got != 78 {
 		t.Fatalf("integral float64: got=%d err=%v", got, err)
@@ -75,6 +80,11 @@ func TestToInt(t *testing.T) {
 	// json.Number
 	if got, err := ToInt(json.Number("56")); err != nil || got != 56 {
 		t.Fatalf("json.Number: got=%d err=%v", got, err)
+	}
+
+	// values beyond int must not silently wrap when narrowed
+	if _, err := ToInt(uint64(math.MaxInt) + 1); err == nil {
+		t.Fatalf("expected error for overflowing uint64")
 	}
 
 	// integral floats are accepted, but unsafe float-to-int truncation is not

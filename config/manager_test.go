@@ -59,6 +59,25 @@ func TestManager_GetPrimitives_Conversions(t *testing.T) {
 	}
 }
 
+func TestManager_GetIntRejectsUnsafeNumericConversions(t *testing.T) {
+	tooLarge := uint64(^uint(0)>>1) + 1
+	c := newTestTree(map[string]any{
+		"fractional": float64(1.5),
+		"overflow":   tooLarge,
+		"list":       []any{float64(2), float64(2.5), tooLarge},
+	})
+
+	if got := c.GetInt("fractional", 99); got != 99 {
+		t.Fatalf("fractional value should fall back to default, got %d", got)
+	}
+	if got := c.GetInt("overflow", 99); got != 99 {
+		t.Fatalf("overflowing value should fall back to default, got %d", got)
+	}
+	if got := c.GetIntList("list"); !reflect.DeepEqual(got, []int{2}) {
+		t.Fatalf("unsafe list values should be skipped, got %#v", got)
+	}
+}
+
 func TestManager_Lists(t *testing.T) {
 	c := newTestTree(map[string]any{
 		// avoid 0/1 integers: Value.Bool treats non-zero numbers as true, which is surprising for list typing tests
@@ -84,9 +103,10 @@ func TestManager_Lists(t *testing.T) {
 
 func TestManager_TimeAndByteSize(t *testing.T) {
 	c := newTestTree(map[string]any{
-		"d": "500ms",
-		"s": "2kb",
-		"n": int64(1_000_000),
+		"d":          "500ms",
+		"s":          "2kb",
+		"n":          int64(1_000_000),
+		"fractional": float64(0.5),
 	})
 
 	if c.GetTimeDuration("d") != 500*time.Millisecond {
@@ -94,6 +114,9 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 	}
 	if c.GetTimeDuration("n") != time.Millisecond {
 		t.Fatalf("duration ns int: %v", c.GetTimeDuration("n"))
+	}
+	if got := c.GetTimeDuration("fractional", time.Second); got != time.Second {
+		t.Fatalf("fractional numeric duration should fall back to default, got %v", got)
 	}
 
 	bs := c.GetByteSize("s")
