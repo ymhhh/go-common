@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/ymhhh/go-common/types"
 )
 
 // Value wraps an arbitrary config value and provides conversions.
@@ -54,30 +56,10 @@ func (v Value) String() (string, error) {
 }
 
 func (v Value) Int() (int, error) {
-	switch x := v.v.(type) {
-	case int:
-		return x, nil
-	case int64:
-		return int(x), nil
-	case int32:
-		return int(x), nil
-	case uint:
-		return int(x), nil
-	case uint64:
-		return int(x), nil
-	case float64:
-		return int(x), nil
-	case float32:
-		return int(x), nil
-	case json.Number:
-		i, err := x.Int64()
-		return int(i), err
-	case string:
-		i, err := strconv.ParseInt(x, 10, 64)
-		return int(i), err
-	default:
-		return 0, fmt.Errorf("config: cannot convert %T to int", v.v)
+	if v.v == nil {
+		return 0, fmt.Errorf("config: cannot convert <nil> to int")
 	}
+	return types.ToInt(v.v)
 }
 
 func (v Value) Float64() (float64, error) {

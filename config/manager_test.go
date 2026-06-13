@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -59,6 +60,25 @@ func TestManager_GetPrimitives_Conversions(t *testing.T) {
 	}
 }
 
+func TestManager_GetIntRejectsUnsafeNumericConversions(t *testing.T) {
+	tooLarge := uint64(^uint(0)>>1) + 1
+	c := newTestTree(map[string]any{
+		"fractional": float64(1.5),
+		"overflow":   tooLarge,
+		"list":       []any{float64(2), float64(2.5), tooLarge},
+	})
+
+	if got := c.GetInt("fractional", 99); got != 99 {
+		t.Fatalf("fractional value should fall back to default, got %d", got)
+	}
+	if got := c.GetInt("overflow", 99); got != 99 {
+		t.Fatalf("overflowing value should fall back to default, got %d", got)
+	}
+	if got := c.GetIntList("list"); !reflect.DeepEqual(got, []int{2}) {
+		t.Fatalf("unsafe list values should be skipped, got %#v", got)
+	}
+}
+
 func TestManager_Lists(t *testing.T) {
 	c := newTestTree(map[string]any{
 		// avoid 0/1 integers: Value.Bool treats non-zero numbers as true, which is surprising for list typing tests
@@ -84,9 +104,11 @@ func TestManager_Lists(t *testing.T) {
 
 func TestManager_TimeAndByteSize(t *testing.T) {
 	c := newTestTree(map[string]any{
-		"d": "500ms",
-		"s": "2kb",
-		"n": int64(1_000_000),
+		"d":          "500ms",
+		"s":          "2kb",
+		"n":          int64(1_000_000),
+		"json_exp":   json.Number("1e6"),
+		"fractional": float64(0.5),
 	})
 
 	if c.GetTimeDuration("d") != 500*time.Millisecond {
@@ -94,6 +116,12 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 	}
 	if c.GetTimeDuration("n") != time.Millisecond {
 		t.Fatalf("duration ns int: %v", c.GetTimeDuration("n"))
+	}
+	if got := c.GetTimeDuration("json_exp"); got != time.Millisecond {
+		t.Fatalf("duration ns json exponent: %v", got)
+	}
+	if got := c.GetTimeDuration("fractional", time.Second); got != time.Second {
+		t.Fatalf("fractional numeric duration should fall back to default, got %v", got)
 	}
 
 	bs := c.GetByteSize("s")
@@ -133,6 +161,41 @@ func TestManager_GetByteSize_JSONNumber(t *testing.T) {
 
 	if got, want := c.GetByteSize("exponent_limit"), big.NewInt(1_000_000); got == nil || got.Cmp(want) != 0 {
 		t.Fatalf("exponent_limit: got=%v want=%v", got, want)
+	}
+}
+
+func TestManager_GetByteSizeRejectsUnsafeNumericConversions(t *testing.T) {
+	hugeWant, ok := new(big.Int).SetString("100000000000000000000", 10)
+	if !ok {
+		t.Fatalf("invalid huge test value")
+	}
+	exactHugeWant, ok := new(big.Int).SetString("1"+strings.Repeat("0", 200), 10)
+	if !ok {
+		t.Fatalf("invalid exact huge test value")
+	}
+	def := big.NewInt(99)
+	c := newTestTree(map[string]any{
+		"fractional":              float64(1.5),
+		"json_fractional":         json.Number("1.5"),
+		"json_fractional_precise": json.Number("1." + strings.Repeat("0", 100) + "1"),
+		"huge":                    float64(1e20),
+		"json_huge":               json.Number("1e200"),
+	})
+
+	if got := c.GetByteSize("fractional", def); got == nil || got.Cmp(def) != 0 {
+		t.Fatalf("fractional byte size should fall back to default, got %v", got)
+	}
+	if got := c.GetByteSize("json_fractional", def); got == nil || got.Cmp(def) != 0 {
+		t.Fatalf("fractional JSON byte size should fall back to default, got %v", got)
+	}
+	if got := c.GetByteSize("json_fractional_precise", def); got == nil || got.Cmp(def) != 0 {
+		t.Fatalf("precise fractional JSON byte size should fall back to default, got %v", got)
+	}
+	if got := c.GetByteSize("huge"); got == nil || got.Cmp(hugeWant) != 0 {
+		t.Fatalf("huge byte size should not narrow through int64: got=%v want=%v", got, hugeWant)
+	}
+	if got := c.GetByteSize("json_huge"); got == nil || got.Cmp(exactHugeWant) != 0 {
+		t.Fatalf("huge JSON byte size should preserve exact decimal value: got=%v want=%v", got, exactHugeWant)
 	}
 }
 

@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/ymhhh/go-common/types"
@@ -162,9 +164,6 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 	if i, err := val.Int(); err == nil {
 		return time.Duration(i)
 	}
-	if f, err := val.Float64(); err == nil {
-		return time.Duration(f)
-	}
 
 	s, err := val.String()
 	if err != nil {
@@ -204,7 +203,10 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		}
 		return getDef(defValue)
 	case float64:
-		return big.NewInt(int64(x))
+		if n, ok := float64ByteSize(x); ok {
+			return n
+		}
+		return getDef(defValue)
 	}
 
 	s, err := val.String()
@@ -219,17 +221,22 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 }
 
 func jsonNumberByteSize(n json.Number) (*big.Int, bool) {
-	s := n.String()
-	if i, ok := new(big.Int).SetString(s, 10); ok {
-		return i, true
-	}
+	return decimalByteSize(n.String())
+}
 
-	f, _, err := big.ParseFloat(s, 10, 256, big.ToZero)
-	if err != nil {
+func float64ByteSize(n float64) (*big.Int, bool) {
+	if math.IsNaN(n) || math.IsInf(n, 0) {
 		return nil, false
 	}
-	i, _ := f.Int(nil)
-	return i, true
+	return decimalByteSize(strconv.FormatFloat(n, 'g', -1, 64))
+}
+
+func decimalByteSize(s string) (*big.Int, bool) {
+	r, ok := new(big.Rat).SetString(s)
+	if !ok || r.Denom().Cmp(big.NewInt(1)) != 0 {
+		return nil, false
+	}
+	return new(big.Int).Set(r.Num()), true
 }
 
 func (c *Tree) GetMap(key string) Options {
