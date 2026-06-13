@@ -7,7 +7,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14
 	github.com/sirupsen/logrus v1.9.4
 	go.opentelemetry.io/otel/trace v1.44.0
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	golift.io/rotatorr v0.0.0-20260217050959-f6ac6fc7b38e
 	gopkg.in/yaml.v3 v3.0.1
 )
 

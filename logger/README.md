@@ -20,7 +20,7 @@ logger:
       maxBackups: 7
       maxAgeDays: 7
       compress: false
-      localTime: false
+      localTime: false   # 整数后缀模式下无效，保留仅为兼容旧配置
   text:
     disableColors: true
     fullTimestamp: true
@@ -29,6 +29,14 @@ logger:
 ```
 
 > `output` 为空时自动选用 `file.path`；若两者都未设置则默认输出到 `stderr`。相对路径相对于配置文件所在目录解析，无法解析时返回错误。
+
+### 日志滚动
+
+滚动由 [`golift.io/rotatorr`](https://github.com/golift/rotatorr) 配合自定义后缀 rotator 实现：
+
+- **主日志路径**（`output` / `file.path` 解析后的路径）始终是**真实文件**，不创建软链接
+- **备份命名**：`app.log.1`、`app.log.2`（启用 `compress` 后为 `app.log.1.gz`）
+- **logbook 采集**：请直接采集主日志真实路径（如 `/var/log/app.log`），勿依赖 symlink
 
 ### 使用示例
 
