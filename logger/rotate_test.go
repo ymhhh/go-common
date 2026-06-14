@@ -69,7 +69,7 @@ func TestPurgeBackups_EnforcesMaxBackupsForCompressedArchives(t *testing.T) {
 	}
 }
 
-func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
+func TestBuildPostRotate_PurgesAfterCompressionCompletes(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
 	rotating := mainPath + ".1"
@@ -89,18 +89,12 @@ func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
 	})
 	post("", rotating)
 
-	if _, err := os.Stat(rotating); err != nil {
-		t.Fatalf("rotating backup removed before background compression finished: %v", err)
+	if _, err := os.Stat(rotating); !os.IsNotExist(err) {
+		t.Fatalf("expected uncompressed backup to be removed after compression, err=%v", err)
 	}
-
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if _, err := os.Stat(rotating + ".gz"); err == nil {
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
+	if _, err := os.Stat(rotating + ".gz"); err != nil {
+		t.Fatalf("expected compressed backup: %v", err)
 	}
-	t.Fatal("compression did not finish in time")
 }
 
 func TestBuildPostRotate_WaitsForCompressionBeforeReturning(t *testing.T) {
