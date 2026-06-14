@@ -3,8 +3,12 @@ package logger
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
+
+	"golift.io/rotatorr/compressor"
+	"golift.io/rotatorr/filer"
 )
 
 func TestSuffixRotator_RotateUsesTrailingIndex(t *testing.T) {
@@ -99,6 +103,70 @@ func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
 	t.Fatal("compression did not finish in time")
 }
 
+func TestBuildPostRotate_WaitsForCompressionBeforeReturning(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "app.log")
+	rotating := mainPath + ".1"
+
+	if err := os.WriteFile(rotating, []byte("rotating backup"), 0o644); err != nil {
+		t.Fatalf("write rotating backup: %v", err)
+	}
+
+	originalFiler := compressor.Filer
+	blocking := &blockingCompressFiler{
+		Filer:     filer.Default(),
+		blockName: rotating,
+		entered:   make(chan struct{}),
+		release:   make(chan struct{}),
+	}
+	compressor.Filer = blocking
+	t.Cleanup(func() {
+		compressor.Filer = originalFiler
+	})
+
+	post := buildPostRotate(mainPath, rotateConfig{
+		MaxBackups: 2,
+		MaxAgeDays: 7,
+		Compress:   true,
+	})
+
+	done := make(chan struct{})
+	go func() {
+		post("", rotating)
+		close(done)
+	}()
+
+	select {
+	case <-blocking.entered:
+	case <-time.After(time.Second):
+		t.Fatal("compression did not start")
+	}
+
+	returnedEarly := false
+	select {
+	case <-done:
+		returnedEarly = true
+	default:
+	}
+
+	close(blocking.release)
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("post did not return after compression was released")
+	}
+
+	if returnedEarly {
+		t.Fatal("post returned before compression completed")
+	}
+	if _, err := os.Stat(rotating); !os.IsNotExist(err) {
+		t.Fatalf("expected uncompressed backup to be removed after compression, err=%v", err)
+	}
+	if _, err := os.Stat(rotating + ".gz"); err != nil {
+		t.Fatalf("expected compressed backup: %v", err)
+	}
+}
+
 func TestPurgeBackups_RemovesExpiredBackupsWithoutCompress(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
@@ -184,4 +252,22 @@ func TestPurgeBackups_SkipsFileBeingCompressed(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "app.log.3")); !os.IsNotExist(err) {
 		t.Fatalf("expected app.log.3 to be removed, err=%v", err)
 	}
+}
+
+type blockingCompressFiler struct {
+	filer.Filer
+	blockName string
+	entered   chan struct{}
+	release   chan struct{}
+	once      sync.Once
+}
+
+func (f *blockingCompressFiler) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	if name == f.blockName {
+		f.once.Do(func() {
+			close(f.entered)
+			<-f.release
+		})
+	}
+	return f.Filer.OpenFile(name, flag, perm)
 }
