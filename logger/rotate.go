@@ -115,9 +115,8 @@ func newRotatingWriter(path string, rc rotateConfig) (io.Writer, io.Closer, erro
 func buildPostRotate(mainPath string, rc rotateConfig) func(fileName, newFile string) {
 	return func(_, newFile string) {
 		if rc.Compress {
-			compressor.CompressBackground(newFile, func(_ *compressor.Report) {
-				purgeBackups(mainPath, rc, newFile)
-			})
+			_, _ = compressor.Compress(newFile)
+			purgeBackups(mainPath, rc, newFile)
 			return
 		}
 		purgeBackups(mainPath, rc, "")
