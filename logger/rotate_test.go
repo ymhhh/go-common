@@ -73,27 +73,72 @@ func TestBuildPostRotate_PurgesAfterCompressionCompletes(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
 	rotating := mainPath + ".1"
+	expired := mainPath + ".3"
 
 	if err := os.WriteFile(rotating, []byte("rotating backup"), 0o644); err != nil {
 		t.Fatalf("write rotating backup: %v", err)
+	}
+	if err := os.WriteFile(expired, []byte("expired backup"), 0o644); err != nil {
+		t.Fatalf("write expired backup: %v", err)
 	}
 	oldTime := time.Now().Add(-48 * time.Hour)
 	if err := os.Chtimes(rotating, oldTime, oldTime); err != nil {
 		t.Fatalf("chtimes rotating backup: %v", err)
 	}
+	if err := os.Chtimes(expired, oldTime, oldTime); err != nil {
+		t.Fatalf("chtimes expired backup: %v", err)
+	}
+
+	originalFiler := compressor.Filer
+	blocker := &blockingCompressFiler{
+		Filer:     originalFiler,
+		blockPath: rotating,
+		started:   make(chan struct{}),
+		release:   make(chan struct{}),
+	}
+	compressor.Filer = blocker
+	t.Cleanup(func() {
+		blocker.releaseCompression()
+		compressor.Filer = originalFiler
+	})
 
 	post := buildPostRotate(mainPath, rotateConfig{
 		MaxBackups: 2,
 		MaxAgeDays: 1,
 		Compress:   true,
 	})
-	post("", rotating)
+	done := make(chan struct{})
+	go func() {
+		post("", rotating)
+		close(done)
+	}()
+
+	select {
+	case <-blocker.started:
+	case <-time.After(time.Second):
+		t.Fatal("compression did not start")
+	}
+
+	if _, err := os.Stat(expired); err != nil {
+		t.Fatalf("expired backup was purged before compression finished: %v", err)
+	}
+
+	blocker.releaseCompression()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("post-rotate did not return after compression finished")
+	}
 
 	if _, err := os.Stat(rotating); !os.IsNotExist(err) {
 		t.Fatalf("expected rotating backup to be replaced by compressed archive, err=%v", err)
 	}
 	if _, err := os.Stat(rotating + ".gz"); err != nil {
 		t.Fatalf("expected compressed backup: %v", err)
+	}
+	if _, err := os.Stat(expired); !os.IsNotExist(err) {
+		t.Fatalf("expected expired backup to be purged after compression, err=%v", err)
 	}
 }
 
