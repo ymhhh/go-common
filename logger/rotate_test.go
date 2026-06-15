@@ -3,8 +3,12 @@ package logger
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
+
+	"golift.io/rotatorr/compressor"
+	"golift.io/rotatorr/filer"
 )
 
 func TestSuffixRotator_RotateUsesTrailingIndex(t *testing.T) {
@@ -65,7 +69,7 @@ func TestPurgeBackups_EnforcesMaxBackupsForCompressedArchives(t *testing.T) {
 	}
 }
 
-func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
+func TestBuildPostRotate_PurgesAfterCompressionCompletes(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "app.log")
 	rotating := mainPath + ".1"
@@ -85,18 +89,94 @@ func TestBuildPostRotate_DefersPurgeUntilCompressionCompletes(t *testing.T) {
 	})
 	post("", rotating)
 
-	if _, err := os.Stat(rotating); err != nil {
-		t.Fatalf("rotating backup removed before background compression finished: %v", err)
+	if _, err := os.Stat(rotating); !os.IsNotExist(err) {
+		t.Fatalf("expected rotating backup to be replaced by compressed archive, err=%v", err)
+	}
+	if _, err := os.Stat(rotating + ".gz"); err != nil {
+		t.Fatalf("expected compressed backup: %v", err)
+	}
+}
+
+func TestBuildPostRotate_WaitsForCompressionBeforeReturning(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "app.log")
+	rotating := mainPath + ".1"
+
+	if err := os.WriteFile(rotating, []byte("rotating backup"), 0o644); err != nil {
+		t.Fatalf("write rotating backup: %v", err)
 	}
 
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if _, err := os.Stat(rotating + ".gz"); err == nil {
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
+	originalFiler := compressor.Filer
+	blocker := &blockingCompressFiler{
+		Filer:     originalFiler,
+		blockPath: rotating,
+		started:   make(chan struct{}),
+		release:   make(chan struct{}),
 	}
-	t.Fatal("compression did not finish in time")
+	compressor.Filer = blocker
+	t.Cleanup(func() {
+		blocker.releaseCompression()
+		compressor.Filer = originalFiler
+	})
+
+	post := buildPostRotate(mainPath, rotateConfig{
+		MaxBackups: 2,
+		MaxAgeDays: 7,
+		Compress:   true,
+	})
+
+	done := make(chan struct{})
+	go func() {
+		post("", rotating)
+		close(done)
+	}()
+
+	select {
+	case <-blocker.started:
+	case <-done:
+		t.Fatal("post-rotate returned before compression started")
+	case <-time.After(time.Second):
+		t.Fatal("compression did not start")
+	}
+
+	select {
+	case <-done:
+		t.Fatal("post-rotate returned before compression finished")
+	default:
+	}
+
+	blocker.releaseCompression()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("post-rotate did not return after compression finished")
+	}
+}
+
+type blockingCompressFiler struct {
+	filer.Filer
+	blockPath   string
+	started     chan struct{}
+	release     chan struct{}
+	once        sync.Once
+	releaseOnce sync.Once
+}
+
+func (f *blockingCompressFiler) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	if name == f.blockPath && flag == os.O_RDONLY {
+		f.once.Do(func() {
+			close(f.started)
+		})
+		<-f.release
+	}
+	return f.Filer.OpenFile(name, flag, perm)
+}
+
+func (f *blockingCompressFiler) releaseCompression() {
+	f.releaseOnce.Do(func() {
+		close(f.release)
+	})
 }
 
 func TestPurgeBackups_RemovesExpiredBackupsWithoutCompress(t *testing.T) {
