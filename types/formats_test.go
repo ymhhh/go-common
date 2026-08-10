@@ -88,3 +88,21 @@ func TestParseStringTime(t *testing.T) {
 		t.Fatalf("expected 0, got %v", got)
 	}
 }
+
+func TestParseStringTimeOK_ZeroDurations(t *testing.T) {
+	for _, s := range []string{"0s", "0d", "0w", "0y", "0h", "0m", "0ms"} {
+		got, ok := ParseStringTimeOK(s)
+		if !ok {
+			t.Fatalf("%q: expected ok", s)
+		}
+		if got != 0 {
+			t.Fatalf("%q: got %v, want 0", s, got)
+		}
+	}
+	if _, ok := ParseStringTimeOK("bad"); ok {
+		t.Fatalf("bad: expected !ok")
+	}
+	if _, ok := ParseStringTimeOK("0"); ok {
+		t.Fatalf("bare 0 has no unit: expected !ok")
+	}
+}

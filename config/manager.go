@@ -169,17 +169,17 @@ func (c *Tree) GetTimeDuration(key string, defValue ...time.Duration) time.Durat
 	if err != nil {
 		return getDef(defValue)
 	}
-	d := types.ParseStringTime(s)
-	if d == 0 && s != "" && s != "0" {
-		// allow stdlib duration strings like "300ms"
-		if d2, err := time.ParseDuration(s); err == nil {
-			return d2
-		}
+	if d, ok := types.ParseStringTimeOK(s); ok {
+		return d
 	}
-	if d == 0 {
-		return getDef(defValue)
+	// allow stdlib duration strings like "300ms", "0", "0h0m0s"
+	if d2, err := time.ParseDuration(s); err == nil {
+		return d2
 	}
-	return d
+	if s == "0" {
+		return 0
+	}
+	return getDef(defValue)
 }
 
 func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {

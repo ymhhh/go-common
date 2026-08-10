@@ -30,6 +30,19 @@ func TestDuration_FlagValue(t *testing.T) {
 	if d.Duration() != 0 {
 		t.Fatalf("set empty should reset to 0, got %v", d.Duration())
 	}
+
+	if err := d.Set("1d"); err != nil {
+		t.Fatalf("set 1d: %v", err)
+	}
+	if d.Duration() != 24*time.Hour {
+		t.Fatalf("set 1d: got %v", d.Duration())
+	}
+	if err := d.Set("0d"); err != nil {
+		t.Fatalf("set 0d: %v", err)
+	}
+	if d.Duration() != 0 {
+		t.Fatalf("set 0d: got %v", d.Duration())
+	}
 }
 
 func TestDuration_YAML(t *testing.T) {
@@ -86,5 +99,15 @@ func TestDuration_YAML(t *testing.T) {
 
 	if err := yaml.Unmarshal([]byte("d: definitely-not-a-duration\n"), &cfg{}); err == nil {
 		t.Fatalf("expected invalid duration error")
+	}
+
+	for _, s := range []string{"0", "0s", "0d", "0w", "0y"} {
+		var zero cfg
+		if err := yaml.Unmarshal([]byte("d: "+s+"\n"), &zero); err != nil {
+			t.Fatalf("unmarshal %q: %v", s, err)
+		}
+		if zero.D.Duration() != 0 {
+			t.Fatalf("unmarshal %q: got %v", s, zero.D.Duration())
+		}
 	}
 }

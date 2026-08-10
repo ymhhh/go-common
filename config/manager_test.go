@@ -109,6 +109,12 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 		"n":          int64(1_000_000),
 		"json_exp":   json.Number("1e6"),
 		"fractional": float64(0.5),
+		"zero":       "0",
+		"zero_d":     "0d",
+		"zero_w":     "0w",
+		"zero_y":     "0y",
+		"zero_s":     "0s",
+		"bad":        "not-a-duration",
 	})
 
 	if c.GetTimeDuration("d") != 500*time.Millisecond {
@@ -122,6 +128,14 @@ func TestManager_TimeAndByteSize(t *testing.T) {
 	}
 	if got := c.GetTimeDuration("fractional", time.Second); got != time.Second {
 		t.Fatalf("fractional numeric duration should fall back to default, got %v", got)
+	}
+	for _, key := range []string{"zero", "zero_d", "zero_w", "zero_y", "zero_s"} {
+		if got := c.GetTimeDuration(key, 7*time.Second); got != 0 {
+			t.Fatalf("%s: got %v, want 0 (not default)", key, got)
+		}
+	}
+	if got := c.GetTimeDuration("bad", 7*time.Second); got != 7*time.Second {
+		t.Fatalf("bad duration should use default, got %v", got)
 	}
 
 	bs := c.GetByteSize("s")

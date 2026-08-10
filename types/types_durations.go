@@ -52,12 +52,19 @@ func (d *Duration) Set(s string) error {
 		*d = 0
 		return nil
 	}
-	v, err := time.ParseDuration(s)
-	if err != nil {
-		return err
+	if v, ok := ParseStringTimeOK(s); ok {
+		*d = Duration(v)
+		return nil
 	}
-	*d = Duration(v)
-	return nil
+	if v, err := time.ParseDuration(s); err == nil {
+		*d = Duration(v)
+		return nil
+	}
+	if s == "0" {
+		*d = 0
+		return nil
+	}
+	return fmt.Errorf("types: invalid duration %q", s)
 }
 
 func (d Duration) Get() any {
@@ -80,13 +87,16 @@ func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 			*d = 0
 			return nil
 		}
-		dur := ParseStringTime(s)
-		if dur != 0 || s == "0" {
+		if dur, ok := ParseStringTimeOK(s); ok {
 			*d = Duration(dur)
 			return nil
 		}
 		if d2, err := time.ParseDuration(s); err == nil {
 			*d = Duration(d2)
+			return nil
+		}
+		if s == "0" {
+			*d = 0
 			return nil
 		}
 		if n, err := strconv.ParseInt(s, 10, 64); err == nil {

@@ -126,48 +126,54 @@ func parseByteSizeValue(value string, unit *big.Int, defValue ...*big.Int) *big.
 	return new(big.Int).Quo(r.Num(), r.Denom())
 }
 
-// ParseStringTime return time.Duration
-func ParseStringTime(s string, defValue ...time.Duration) time.Duration {
+// ParseStringTimeOK parses a human-readable duration with a unit
+// (e.g. "2s", "0d", "1.5h"). ok is false when s does not match.
+// A successful parse of zero (e.g. "0d", "0s") returns (0, true).
+func ParseStringTimeOK(s string) (time.Duration, bool) {
 	groups, matched := FindStringSubmatchMap(s, timeRe)
-
 	if !matched {
-		if len(defValue) == 0 {
-			return 0
-		}
-		return defValue[0]
+		return 0, false
 	}
 
 	f, err := strconv.ParseFloat(groups["value"], 64)
 	if err != nil {
-		if len(defValue) == 0 {
-			return 0
-		}
-		return defValue[0]
+		return 0, false
 	}
 
 	switch groups["unit"] {
 	case "nanoseconds", "nanosecond", "nanos", "nano", "ns":
-		return time.Duration(float64(time.Nanosecond) * f)
+		return time.Duration(float64(time.Nanosecond) * f), true
 	case "microseconds", "microsecond", "micros", "micro", "us":
-		return time.Duration(float64(time.Microsecond) * f)
+		return time.Duration(float64(time.Microsecond) * f), true
 	case "milliseconds", "millisecond", "millis", "milli", "ms":
-		return time.Duration(float64(time.Millisecond) * f)
+		return time.Duration(float64(time.Millisecond) * f), true
 	case "seconds", "second", "s":
-		return time.Duration(float64(time.Second) * f)
+		return time.Duration(float64(time.Second) * f), true
 	case "minutes", "minute", "m":
-		return time.Duration(float64(time.Minute) * f)
+		return time.Duration(float64(time.Minute) * f), true
 	case "hours", "hour", "h":
-		return time.Duration(float64(time.Hour) * f)
+		return time.Duration(float64(time.Hour) * f), true
 	case "days", "day", "d":
-		return time.Duration(float64(time.Hour*24) * f)
+		return time.Duration(float64(time.Hour*24) * f), true
 	case "weeks", "week", "w":
-		return time.Duration(float64(time.Hour*24*7) * f)
+		return time.Duration(float64(time.Hour*24*7) * f), true
 	case "years", "year", "y":
-		return time.Duration(float64(time.Hour*24*365) * f)
+		return time.Duration(float64(time.Hour*24*365) * f), true
 	default:
-		if len(defValue) == 0 {
-			return 0
-		}
-		return defValue[0]
+		return 0, false
 	}
+}
+
+// ParseStringTime return time.Duration.
+// When s does not match, returns defValue[0] if provided, otherwise 0.
+// Prefer ParseStringTimeOK when zero must be distinguished from parse failure.
+func ParseStringTime(s string, defValue ...time.Duration) time.Duration {
+	d, ok := ParseStringTimeOK(s)
+	if ok {
+		return d
+	}
+	if len(defValue) == 0 {
+		return 0
+	}
+	return defValue[0]
 }
