@@ -67,10 +67,27 @@ func (l *Logger) Close() error {
 	if l == nil {
 		return nil
 	}
+
+	// Serialize with InitGlobal when closing the global logger so closer /
+	// closeOnce are not mutated concurrently (and so a later reload does not
+	// double-close a rotatorr writer).
+	globalMu.Lock()
+	if global == l {
+		err := l.closeLocked()
+		globalMu.Unlock()
+		return err
+	}
+	globalMu.Unlock()
+
+	return l.closeLocked()
+}
+
+func (l *Logger) closeLocked() error {
 	var err error
 	l.closeOnce.Do(func() {
-		if l.closer != nil {
-			err = l.closer.Close()
+		if c := l.closer; c != nil {
+			l.closer = nil
+			err = c.Close()
 		}
 	})
 	return err

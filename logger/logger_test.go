@@ -354,6 +354,46 @@ func TestInitGlobal_ReloadAfterCloseClosesCurrentOutput(t *testing.T) {
 	}
 }
 
+func TestInitGlobal_ReloadAfterCloseWithRotate(t *testing.T) {
+	resetGlobalForTest(t)
+	t.Cleanup(func() { resetGlobalForTest(t) })
+
+	dir := t.TempDir()
+	firstPath := filepath.Join(dir, "first.log")
+	secondPath := filepath.Join(dir, "second.log")
+
+	if err := InitGlobal(rotateLoggerConfig(firstPath)); err != nil {
+		t.Fatalf("InitGlobal first: %v", err)
+	}
+	L().Info("before close")
+	globalMu.RLock()
+	first := global
+	globalMu.RUnlock()
+	if err := first.Close(); err != nil {
+		t.Fatalf("Close first global: %v", err)
+	}
+
+	// Previously panicked: InitGlobal closed the already-closed rotatorr writer.
+	if err := InitGlobal(rotateLoggerConfig(secondPath)); err != nil {
+		t.Fatalf("InitGlobal second: %v", err)
+	}
+	L().Info("after reload")
+	globalMu.RLock()
+	second := global
+	globalMu.RUnlock()
+	if err := second.Close(); err != nil {
+		t.Fatalf("Close second global: %v", err)
+	}
+
+	secondLog, err := os.ReadFile(secondPath)
+	if err != nil {
+		t.Fatalf("read second log: %v", err)
+	}
+	if !strings.Contains(string(secondLog), "after reload") {
+		t.Fatalf("second log missing post-reload entry: %q", string(secondLog))
+	}
+}
+
 func fileLoggerConfig(path string) config.Config {
 	opts := config.Options{
 		"logger": map[string]any{

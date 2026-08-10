@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -23,19 +24,24 @@ func InitGlobal(c config.Config, path ...string) error {
 		return err
 	}
 
-	var oldCloser interface{ Close() error }
+	var oldCloser io.Closer
 
 	globalMu.Lock()
 	old := global
 	if old == nil {
 		global = l
 	} else {
+		// Take ownership of the previous closer before installing the new one.
+		// If Close already ran, closer is nil and must not be closed again
+		// (rotatorr panics on double Close).
 		oldCloser = old.closer
+		old.closer = nil
 		old.SetLevel(l.Level)
 		old.SetReportCaller(l.ReportCaller)
 		old.SetFormatter(l.Formatter)
 		old.SetOutput(l.Out)
 		old.closer = l.closer
+		l.closer = nil
 		old.closeOnce = sync.Once{}
 	}
 	globalMu.Unlock()
