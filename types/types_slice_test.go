@@ -1,6 +1,7 @@
 package types
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -20,6 +21,18 @@ func TestContains_Index_Remove_Unique(t *testing.T) {
 	}
 	if got := Unique([]string{"a", "b", "a"}); len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("Unique: %#v", got)
+	}
+}
+
+func TestRemove_DoesNotMutateInput(t *testing.T) {
+	s := []int{1, 2, 3, 4}
+	orig := append([]int(nil), s...)
+	got := Remove(s, 3)
+	if !reflect.DeepEqual(s, orig) {
+		t.Fatalf("Remove mutated input: got %#v want %#v", s, orig)
+	}
+	if !reflect.DeepEqual(got, []int{1, 2, 4}) {
+		t.Fatalf("Remove result: %#v", got)
 	}
 }
 

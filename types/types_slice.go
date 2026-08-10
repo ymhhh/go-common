@@ -56,12 +56,16 @@ func Reduce[T any, R any](slice []T, initial R, fn func(R, T) R) R {
 }
 
 // Remove removes the first occurrence of value from slice.
+// The input slice is not modified; a new slice is returned.
 func Remove[T comparable](slice []T, value T) []T {
 	index := Index(slice, value)
 	if index == -1 {
 		return slice
 	}
-	return append(slice[:index], slice[index+1:]...)
+	result := make([]T, 0, len(slice)-1)
+	result = append(result, slice[:index]...)
+	result = append(result, slice[index+1:]...)
+	return result
 }
 
 // RemoveAll removes all occurrences of value from slice
