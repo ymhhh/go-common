@@ -44,6 +44,69 @@ var (
 	_YByte = (&big.Int{}).Mul(_ZByte, _Num1000)
 )
 
+var byteSizeUnits = func() map[string]*big.Int {
+	m := make(map[string]*big.Int, 64)
+	add := func(unit *big.Int, names ...string) {
+		for _, name := range names {
+			m[name] = unit
+		}
+	}
+	add(_Byte, "b", "byte", "bytes")
+	add(_KByte, "kb", "kilobyte", "kilobytes")
+	add(_MByte, "mb", "megabyte", "megabytes")
+	add(_GByte, "gb", "gigabyte", "gigabytes")
+	add(_TByte, "tb", "terabyte", "terabytes")
+	add(_PByte, "pb", "petabyte", "petabytes")
+	add(_EByte, "eb", "exabyte", "exabytes")
+	add(_ZByte, "zb", "zettabyte", "zettabytes")
+	add(_YByte, "yb", "yottabyte", "yottabytes")
+	add(_KiByte, "k", "ki", "kib", "kibibyte", "kibibytes")
+	add(_MiByte, "m", "mi", "mib", "mebibyte", "mebibytes")
+	add(_GiByte, "g", "gi", "gib", "gibibyte", "gibibytes")
+	add(_TiByte, "t", "ti", "tib", "tebibyte", "tebibytes")
+	add(_PiByte, "p", "pi", "pib", "pebibyte", "pebibytes")
+	add(_EiByte, "e", "ei", "eib", "exbibyte", "exbibytes")
+	add(_ZiByte, "z", "zi", "zib", "zebibyte", "zebibytes")
+	add(_YiByte, "y", "yi", "yib", "yobibyte", "yobibytes")
+	return m
+}()
+
+var timeUnits = map[string]time.Duration{
+	"nanoseconds":  time.Nanosecond,
+	"nanosecond":   time.Nanosecond,
+	"nanos":        time.Nanosecond,
+	"nano":         time.Nanosecond,
+	"ns":           time.Nanosecond,
+	"microseconds": time.Microsecond,
+	"microsecond":  time.Microsecond,
+	"micros":       time.Microsecond,
+	"micro":        time.Microsecond,
+	"us":           time.Microsecond,
+	"milliseconds": time.Millisecond,
+	"millisecond":  time.Millisecond,
+	"millis":       time.Millisecond,
+	"milli":        time.Millisecond,
+	"ms":           time.Millisecond,
+	"seconds":      time.Second,
+	"second":       time.Second,
+	"s":            time.Second,
+	"minutes":      time.Minute,
+	"minute":       time.Minute,
+	"m":            time.Minute,
+	"hours":        time.Hour,
+	"hour":         time.Hour,
+	"h":            time.Hour,
+	"days":         24 * time.Hour,
+	"day":          24 * time.Hour,
+	"d":            24 * time.Hour,
+	"weeks":        7 * 24 * time.Hour,
+	"week":         7 * 24 * time.Hour,
+	"w":            7 * 24 * time.Hour,
+	"years":        365 * 24 * time.Hour,
+	"year":         365 * 24 * time.Hour,
+	"y":            365 * 24 * time.Hour,
+}
+
 // FindStringSubmatchMap returns a map of named capture groups from the leftmost match
 // of re in s. A return value of nil indicates no match.
 func FindStringSubmatchMap(s string, re *regexp.Regexp) (map[string]string, bool) {
@@ -69,45 +132,11 @@ func ParseStringByteSize(key string, defValue ...*big.Int) *big.Int {
 	if !matched {
 		return defaultByteSize(defValue...)
 	}
-
-	switch groups["unit"] {
-	case "b", "byte", "bytes":
-		return parseByteSizeValue(groups["value"], _Byte, defValue...)
-	case "kb", "kilobyte", "kilobytes":
-		return parseByteSizeValue(groups["value"], _KByte, defValue...)
-	case "mb", "megabyte", "megabytes":
-		return parseByteSizeValue(groups["value"], _MByte, defValue...)
-	case "gb", "gigabyte", "gigabytes":
-		return parseByteSizeValue(groups["value"], _GByte, defValue...)
-	case "tb", "terabyte", "terabytes":
-		return parseByteSizeValue(groups["value"], _TByte, defValue...)
-	case "pb", "petabyte", "petabytes":
-		return parseByteSizeValue(groups["value"], _PByte, defValue...)
-	case "eb", "exabyte", "exabytes":
-		return parseByteSizeValue(groups["value"], _EByte, defValue...)
-	case "zb", "zettabyte", "zettabytes":
-		return parseByteSizeValue(groups["value"], _ZByte, defValue...)
-	case "yb", "yottabyte", "yottabytes":
-		return parseByteSizeValue(groups["value"], _YByte, defValue...)
-	case "k", "ki", "kib", "kibibyte", "kibibytes":
-		return parseByteSizeValue(groups["value"], _KiByte, defValue...)
-	case "m", "mi", "mib", "mebibyte", "mebibytes":
-		return parseByteSizeValue(groups["value"], _MiByte, defValue...)
-	case "g", "gi", "gib", "gibibyte", "gibibytes":
-		return parseByteSizeValue(groups["value"], _GiByte, defValue...)
-	case "t", "ti", "tib", "tebibyte", "tebibytes":
-		return parseByteSizeValue(groups["value"], _TiByte, defValue...)
-	case "p", "pi", "pib", "pebibyte", "pebibytes":
-		return parseByteSizeValue(groups["value"], _PiByte, defValue...)
-	case "e", "ei", "eib", "exbibyte", "exbibytes":
-		return parseByteSizeValue(groups["value"], _EiByte, defValue...)
-	case "z", "zi", "zib", "zebibyte", "zebibytes":
-		return parseByteSizeValue(groups["value"], _ZiByte, defValue...)
-	case "y", "yi", "yib", "yobibyte", "yobibytes":
-		return parseByteSizeValue(groups["value"], _YiByte, defValue...)
-	default:
+	unit, ok := byteSizeUnits[groups["unit"]]
+	if !ok {
 		return defaultByteSize(defValue...)
 	}
+	return parseByteSizeValue(groups["value"], unit, defValue...)
 }
 
 func defaultByteSize(defValue ...*big.Int) *big.Int {
@@ -140,29 +169,11 @@ func ParseStringTimeOK(s string) (time.Duration, bool) {
 	if err != nil {
 		return 0, false
 	}
-
-	switch groups["unit"] {
-	case "nanoseconds", "nanosecond", "nanos", "nano", "ns":
-		return time.Duration(float64(time.Nanosecond) * f), true
-	case "microseconds", "microsecond", "micros", "micro", "us":
-		return time.Duration(float64(time.Microsecond) * f), true
-	case "milliseconds", "millisecond", "millis", "milli", "ms":
-		return time.Duration(float64(time.Millisecond) * f), true
-	case "seconds", "second", "s":
-		return time.Duration(float64(time.Second) * f), true
-	case "minutes", "minute", "m":
-		return time.Duration(float64(time.Minute) * f), true
-	case "hours", "hour", "h":
-		return time.Duration(float64(time.Hour) * f), true
-	case "days", "day", "d":
-		return time.Duration(float64(time.Hour*24) * f), true
-	case "weeks", "week", "w":
-		return time.Duration(float64(time.Hour*24*7) * f), true
-	case "years", "year", "y":
-		return time.Duration(float64(time.Hour*24*365) * f), true
-	default:
+	unit, ok := timeUnits[groups["unit"]]
+	if !ok {
 		return 0, false
 	}
+	return time.Duration(float64(unit) * f), true
 }
 
 // ParseStringTime return time.Duration.

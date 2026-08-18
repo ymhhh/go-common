@@ -55,33 +55,36 @@ func TestFound_YAML(t *testing.T) {
 }
 
 func TestToFloat64(t *testing.T) {
-	if got, err := ToFloat64(nil); err != nil || got != 0 {
-		t.Fatalf("nil: got=%v err=%v", got, err)
+	tests := []struct {
+		name    string
+		in      any
+		want    float64
+		wantErr string
+	}{
+		{name: "nil", in: nil, want: 0},
+		{name: "float64", in: float64(1.5), want: 1.5},
+		{name: "int64", in: int64(12), want: 12},
+		{name: "uint32", in: uint32(9), want: 9},
+		{name: "uint64", in: uint64(math.MaxUint32), want: float64(math.MaxUint32)},
+		{name: "string", in: "2.5", want: 2.5},
+		{name: "json.Number", in: json.Number("1e2"), want: 100},
+		{name: "Found", in: Found(3.25), want: 3.25},
+		{name: "Fund", in: Fund(3.25), want: 3.25},
+		{name: "bool", in: true, wantErr: "cannot convert bool to float64"},
 	}
-	if got, err := ToFloat64(float64(1.5)); err != nil || got != 1.5 {
-		t.Fatalf("float64: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64(int64(12)); err != nil || got != 12 {
-		t.Fatalf("int64: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64(uint32(9)); err != nil || got != 9 {
-		t.Fatalf("uint32: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64(uint64(math.MaxUint32)); err != nil || got != float64(math.MaxUint32) {
-		t.Fatalf("uint64: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64("2.5"); err != nil || got != 2.5 {
-		t.Fatalf("string: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64(json.Number("1e2")); err != nil || got != 100 {
-		t.Fatalf("json.Number: got=%v err=%v", got, err)
-	}
-	if got, err := ToFloat64(Found(3.25)); err != nil || got != 3.25 {
-		t.Fatalf("Found: got=%v err=%v", got, err)
-	}
-	if _, err := ToFloat64(true); err == nil {
-		t.Fatalf("expected error for bool")
-	} else if !strings.Contains(err.Error(), "cannot convert bool to float64") {
-		t.Fatalf("unexpected error: %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToFloat64(tt.in)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err=%v, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("got=%v err=%v, want %v", got, err, tt.want)
+			}
+		})
 	}
 }

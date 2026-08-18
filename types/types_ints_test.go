@@ -8,118 +8,78 @@ import (
 )
 
 func TestToInt64(t *testing.T) {
-	// nil
-	if got, err := ToInt64(nil); err != nil || got != 0 {
-		t.Fatalf("nil: got=%d err=%v", got, err)
+	tests := []struct {
+		name    string
+		in      any
+		want    int64
+		wantErr string
+	}{
+		{name: "nil", in: nil, want: 0},
+		{name: "int64", in: int64(12), want: 12},
+		{name: "int32", in: int32(12), want: 12},
+		{name: "int", in: int(12), want: 12},
+		{name: "string", in: "34", want: 34},
+		{name: "json.Number", in: json.Number("56"), want: 56},
+		{name: "json.Number exponent", in: json.Number("1e6"), want: 1_000_000},
+		{name: "json.Number fractional", in: json.Number("1.5"), wantErr: "cannot convert"},
+		{name: "uint64 overflow", in: uint64(math.MaxInt64) + 1, wantErr: "cannot convert"},
+		{name: "integral float64", in: float64(78), want: 78},
+		{name: "fractional float64", in: 12.5, wantErr: "cannot convert"},
+		{name: "inf float64", in: math.Inf(1), wantErr: "cannot convert"},
+		{name: "maxint64 float64", in: float64(math.MaxInt64), wantErr: "cannot convert"},
+		{name: "bool", in: true, wantErr: "cannot convert bool to int64"},
 	}
 
-	// ints
-	if got, err := ToInt64(int64(12)); err != nil || got != 12 {
-		t.Fatalf("int64: got=%d err=%v", got, err)
-	}
-	if got, err := ToInt64(int32(12)); err != nil || got != 12 {
-		t.Fatalf("int32: got=%d err=%v", got, err)
-	}
-	if got, err := ToInt64(int(12)); err != nil || got != 12 {
-		t.Fatalf("int: got=%d err=%v", got, err)
-	}
-
-	// string number
-	if got, err := ToInt64("34"); err != nil || got != 34 {
-		t.Fatalf("string: got=%d err=%v", got, err)
-	}
-
-	// json.Number is type string kind
-	if got, err := ToInt64(json.Number("56")); err != nil || got != 56 {
-		t.Fatalf("json.Number: got=%d err=%v", got, err)
-	}
-	if got, err := ToInt64(json.Number("1e6")); err != nil || got != 1_000_000 {
-		t.Fatalf("json.Number exponent: got=%d err=%v", got, err)
-	}
-	if _, err := ToInt64(json.Number("1.5")); err == nil {
-		t.Fatalf("expected error for fractional json.Number")
-	}
-
-	// unsigned values beyond int64 must not wrap negative
-	if _, err := ToInt64(uint64(math.MaxInt64) + 1); err == nil {
-		t.Fatalf("expected error for overflowing uint64")
-	}
-
-	// integral floats are accepted, but unsafe float-to-int truncation is not
-	if got, err := ToInt64(float64(78)); err != nil || got != 78 {
-		t.Fatalf("integral float64: got=%d err=%v", got, err)
-	}
-	if _, err := ToInt64(12.5); err == nil {
-		t.Fatalf("expected error for fractional float64")
-	}
-	if _, err := ToInt64(math.Inf(1)); err == nil {
-		t.Fatalf("expected error for infinite float64")
-	}
-	if _, err := ToInt64(float64(math.MaxInt64)); err == nil {
-		t.Fatalf("expected error for out-of-range float64")
-	}
-
-	// invalid type
-	if _, err := ToInt64(true); err == nil {
-		t.Fatalf("expected error for bool")
-	} else if !strings.Contains(err.Error(), "cannot convert bool to int64") {
-		t.Fatalf("unexpected error: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToInt64(tt.in)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err=%v, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("got=%d err=%v, want %d", got, err, tt.want)
+			}
+		})
 	}
 }
 
 func TestToInt(t *testing.T) {
-	// nil
-	if got, err := ToInt(nil); err != nil || got != 0 {
-		t.Fatalf("nil: got=%d err=%v", got, err)
+	tests := []struct {
+		name    string
+		in      any
+		want    int
+		wantErr string
+	}{
+		{name: "nil", in: nil, want: 0},
+		{name: "int64", in: int64(12), want: 12},
+		{name: "int", in: int(12), want: 12},
+		{name: "string", in: "34", want: 34},
+		{name: "json.Number", in: json.Number("56"), want: 56},
+		{name: "json.Number exponent", in: json.Number("1e6"), want: 1_000_000},
+		{name: "json.Number fractional", in: json.Number("1.5"), wantErr: "cannot convert"},
+		{name: "uint64 overflow", in: uint64(math.MaxInt) + 1, wantErr: "cannot convert"},
+		{name: "integral float32", in: float32(78), want: 78},
+		{name: "fractional float32", in: float32(12.5), wantErr: "cannot convert"},
+		{name: "NaN", in: math.NaN(), wantErr: "cannot convert"},
+		{name: "out of range float64", in: -float64(math.MinInt), wantErr: "cannot convert"},
+		{name: "slice", in: []int{1}, wantErr: "cannot convert []int to int"},
 	}
 
-	// ints
-	if got, err := ToInt(int64(12)); err != nil || got != 12 {
-		t.Fatalf("int64: got=%d err=%v", got, err)
-	}
-	if got, err := ToInt(int(12)); err != nil || got != 12 {
-		t.Fatalf("int: got=%d err=%v", got, err)
-	}
-
-	// string number
-	if got, err := ToInt("34"); err != nil || got != 34 {
-		t.Fatalf("string: got=%d err=%v", got, err)
-	}
-
-	// json.Number
-	if got, err := ToInt(json.Number("56")); err != nil || got != 56 {
-		t.Fatalf("json.Number: got=%d err=%v", got, err)
-	}
-	if got, err := ToInt(json.Number("1e6")); err != nil || got != 1_000_000 {
-		t.Fatalf("json.Number exponent: got=%d err=%v", got, err)
-	}
-	if _, err := ToInt(json.Number("1.5")); err == nil {
-		t.Fatalf("expected error for fractional json.Number")
-	}
-
-	// values beyond int must not silently wrap when narrowed
-	if _, err := ToInt(uint64(math.MaxInt) + 1); err == nil {
-		t.Fatalf("expected error for overflowing uint64")
-	}
-
-	// integral floats are accepted, but unsafe float-to-int truncation is not
-	if got, err := ToInt(float32(78)); err != nil || got != 78 {
-		t.Fatalf("integral float32: got=%d err=%v", got, err)
-	}
-	if _, err := ToInt(float32(12.5)); err == nil {
-		t.Fatalf("expected error for fractional float32")
-	}
-	if _, err := ToInt(math.NaN()); err == nil {
-		t.Fatalf("expected error for NaN float64")
-	}
-	if _, err := ToInt(-float64(math.MinInt)); err == nil {
-		t.Fatalf("expected error for out-of-range float64")
-	}
-
-	// invalid type
-	if _, err := ToInt([]int{1}); err == nil {
-		t.Fatalf("expected error for slice")
-	} else if !strings.Contains(err.Error(), "cannot convert []int to int") {
-		t.Fatalf("unexpected error: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToInt(tt.in)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err=%v, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("got=%d err=%v, want %d", got, err, tt.want)
+			}
+		})
 	}
 }

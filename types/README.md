@@ -5,7 +5,7 @@
 - **时间/大小/字符串解析**：从人类可读字符串解析时间间隔（`ParseStringTime`）、字节大小（`ParseStringByteSize`），正则预编译避免重复开销
 - **标量包装类型**：
   - `Duration` — flag.Value + YAML 序列化
-  - `Found` — 金额/浮点展示（两位小数；命名历史原因，对应 `RoundFund`）
+  - `Fund` / `Found` — 金额/浮点展示（两位小数；`Found` 是历史别名）
   - `Secret` — 日志/序列化脱敏（`String()` 返回 `<hidden>`）
   - `Strings` — 多值 flag 与 YAML 列表
 - **泛型切片工具**：`Contains`、`ContainsFunc`、`Filter`、`Map`、`Reduce`、`Unique`、`Chunk`、`Shuffle`、`Reverse`、`Intersect`、`Union`、`Difference`、`Any`、`All`、`First`、`Count`、`Distinct`、`Flatten`、`Partition`、`Zip`、`Unzip`、`Sort`（返回拷贝；原地排序用 `SortInPlace`）、`Sum`、`Max`、`Min`、`Average`、`Take`、`Drop`、`Convert`（其中 `Contains`/`Index`/`Reverse` 与标准库 `slices` 对应，可按需直接使用 `slices`）

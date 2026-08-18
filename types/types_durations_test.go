@@ -24,24 +24,23 @@ func TestDuration_FlagValue(t *testing.T) {
 		t.Fatalf("string: got %q", d.String())
 	}
 
-	if err := d.Set(""); err != nil {
-		t.Fatalf("set empty: %v", err)
+	sets := []struct {
+		in   string
+		want time.Duration
+	}{
+		{in: "", want: 0},
+		{in: "1d", want: 24 * time.Hour},
+		{in: "0d", want: 0},
 	}
-	if d.Duration() != 0 {
-		t.Fatalf("set empty should reset to 0, got %v", d.Duration())
-	}
-
-	if err := d.Set("1d"); err != nil {
-		t.Fatalf("set 1d: %v", err)
-	}
-	if d.Duration() != 24*time.Hour {
-		t.Fatalf("set 1d: got %v", d.Duration())
-	}
-	if err := d.Set("0d"); err != nil {
-		t.Fatalf("set 0d: %v", err)
-	}
-	if d.Duration() != 0 {
-		t.Fatalf("set 0d: got %v", d.Duration())
+	for _, tt := range sets {
+		t.Run("set "+tt.in, func(t *testing.T) {
+			if err := d.Set(tt.in); err != nil {
+				t.Fatalf("set %q: %v", tt.in, err)
+			}
+			if d.Duration() != tt.want {
+				t.Fatalf("got %v, want %v", d.Duration(), tt.want)
+			}
+		})
 	}
 }
 
@@ -50,41 +49,43 @@ func TestDuration_YAML(t *testing.T) {
 		D Duration `yaml:"d"`
 	}
 
-	// Unmarshal string duration
-	var c cfg
-	if err := yaml.Unmarshal([]byte("d: 250ms\n"), &c); err != nil {
-		t.Fatalf("unmarshal str: %v", err)
-	}
-	if c.D.Duration() != 250*time.Millisecond {
-		t.Fatalf("unmarshal str: got %v", c.D.Duration())
-	}
-
-	var cFrac cfg
-	if err := yaml.Unmarshal([]byte("d: 1.5s\n"), &cFrac); err != nil {
-		t.Fatalf("unmarshal fractional str: %v", err)
-	}
-	if cFrac.D.Duration() != 1500*time.Millisecond {
-		t.Fatalf("unmarshal fractional str: got %v", cFrac.D.Duration())
-	}
-
-	var cCompound cfg
-	if err := yaml.Unmarshal([]byte("d: 1h30m\n"), &cCompound); err != nil {
-		t.Fatalf("unmarshal compound str: %v", err)
-	}
-	if cCompound.D.Duration() != 90*time.Minute {
-		t.Fatalf("unmarshal compound str: got %v", cCompound.D.Duration())
+	tests := []struct {
+		name    string
+		in      string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "string", in: "d: 250ms\n", want: 250 * time.Millisecond},
+		{name: "fractional", in: "d: 1.5s\n", want: 1500 * time.Millisecond},
+		{name: "compound", in: "d: 1h30m\n", want: 90 * time.Minute},
+		{name: "int nanos", in: "d: 1000000\n", want: time.Millisecond},
+		{name: "invalid", in: "d: definitely-not-a-duration\n", wantErr: true},
+		{name: "zero 0", in: "d: 0\n", want: 0},
+		{name: "zero 0s", in: "d: 0s\n", want: 0},
+		{name: "zero 0d", in: "d: 0d\n", want: 0},
+		{name: "zero 0w", in: "d: 0w\n", want: 0},
+		{name: "zero 0y", in: "d: 0y\n", want: 0},
 	}
 
-	// Unmarshal int (nanoseconds)
-	var c2 cfg
-	if err := yaml.Unmarshal([]byte("d: 1000000\n"), &c2); err != nil {
-		t.Fatalf("unmarshal int: %v", err)
-	}
-	if c2.D.Duration() != time.Millisecond {
-		t.Fatalf("unmarshal int: got %v", c2.D.Duration())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c cfg
+			err := yaml.Unmarshal([]byte(tt.in), &c)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if c.D.Duration() != tt.want {
+				t.Fatalf("got %v, want %v", c.D.Duration(), tt.want)
+			}
+		})
 	}
 
-	// Marshal should emit string form (e.g. "1.5s")
 	out, err := yaml.Marshal(cfg{D: Duration(1500 * time.Millisecond)})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -95,19 +96,5 @@ func TestDuration_YAML(t *testing.T) {
 	}
 	if round.D.Duration() != 1500*time.Millisecond {
 		t.Fatalf("roundtrip: got %v", round.D.Duration())
-	}
-
-	if err := yaml.Unmarshal([]byte("d: definitely-not-a-duration\n"), &cfg{}); err == nil {
-		t.Fatalf("expected invalid duration error")
-	}
-
-	for _, s := range []string{"0", "0s", "0d", "0w", "0y"} {
-		var zero cfg
-		if err := yaml.Unmarshal([]byte("d: "+s+"\n"), &zero); err != nil {
-			t.Fatalf("unmarshal %q: %v", s, err)
-		}
-		if zero.D.Duration() != 0 {
-			t.Fatalf("unmarshal %q: got %v", s, zero.D.Duration())
-		}
 	}
 }

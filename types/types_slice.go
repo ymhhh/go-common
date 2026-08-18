@@ -120,7 +120,7 @@ func Chunk[T any](slice []T, size int) [][]T {
 		if end > len(slice) {
 			end = len(slice)
 		}
-		chunks = append(chunks, slice[i:end])
+		chunks = append(chunks, slices.Clone(slice[i:end]))
 	}
 	return chunks
 }

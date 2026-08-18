@@ -48,6 +48,15 @@ func TestChunk_NonPositiveSize(t *testing.T) {
 	}
 }
 
+func TestChunk_CopyIsolation(t *testing.T) {
+	s := []int{1, 2, 3, 4}
+	chunks := Chunk(s, 2)
+	chunks[0][0] = 9
+	if s[0] != 1 {
+		t.Fatalf("Chunk aliased input: %#v", s)
+	}
+}
+
 func TestSort_DoesNotMutateInput(t *testing.T) {
 	s := []int{3, 1, 2}
 	got := Sort(s, func(a, b int) bool { return a < b })

@@ -61,52 +61,55 @@ a:
 		t.Fatalf("Load: %v", err)
 	}
 
-	// Get conversions
-	if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
-		t.Fatalf("a.b.c int: got %d", got)
-	}
-	if _, ok := cfg.GetOK("a.b.c"); !ok {
-		t.Fatalf("GetOK a.b.c: expected ok")
-	}
-	if _, ok := cfg.GetOK("not.exists"); ok {
-		t.Fatalf("GetOK not.exists: expected not ok")
-	}
-	if got, _ := cfg.Get("a.b.c").Float64(); got != 456 {
-		t.Fatalf("a.b.c float64: got %v", got)
-	}
-	if got, _ := cfg.Get("a.b.d").Int(); got != 456 {
-		t.Fatalf("a.b.d ref int: got %d", got)
-	}
-	if got, _ := cfg.Get("a.b.e").String(); got != "from-env" {
-		t.Fatalf("a.b.e env: got %q", got)
-	}
-	if got, _ := cfg.Get("a.b.mix").String(); got != "x-hi-from-env" {
-		t.Fatalf("a.b.mix: got %q", got)
-	}
+	t.Run("override and refs", func(t *testing.T) {
+		if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
+			t.Fatalf("a.b.c int: got %d", got)
+		}
+		if _, ok := cfg.GetOK("a.b.c"); !ok {
+			t.Fatalf("GetOK a.b.c: expected ok")
+		}
+		if _, ok := cfg.GetOK("not.exists"); ok {
+			t.Fatalf("GetOK not.exists: expected not ok")
+		}
+		if got, _ := cfg.Get("a.b.c").Float64(); got != 456 {
+			t.Fatalf("a.b.c float64: got %v", got)
+		}
+		if got, _ := cfg.Get("a.b.d").Int(); got != 456 {
+			t.Fatalf("a.b.d ref int: got %d", got)
+		}
+		if got, _ := cfg.Get("a.b.e").String(); got != "from-env" {
+			t.Fatalf("a.b.e env: got %q", got)
+		}
+		if got, _ := cfg.Get("a.b.mix").String(); got != "x-hi-from-env" {
+			t.Fatalf("a.b.mix: got %q", got)
+		}
+	})
 
-	// Set should create intermediate objects
-	if err := cfg.Set("x.y.z", 9); err != nil {
-		t.Fatalf("Set: %v", err)
-	}
-	if got, _ := cfg.Get("x.y.z").Int(); got != 9 {
-		t.Fatalf("x.y.z: got %d", got)
-	}
+	t.Run("set", func(t *testing.T) {
+		if err := cfg.Set("x.y.z", 9); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		if got, _ := cfg.Get("x.y.z").Int(); got != 9 {
+			t.Fatalf("x.y.z: got %d", got)
+		}
 
-	if err := cfg.Set("a.b.c.leaf", 10); err == nil {
-		t.Fatalf("Set through non-object: expected error")
-	}
-	if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
-		t.Fatalf("a.b.c should remain unchanged after failed Set: got %d", got)
-	}
+		if err := cfg.Set("a.b.c.leaf", 10); err == nil {
+			t.Fatalf("Set through non-object: expected error")
+		}
+		if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
+			t.Fatalf("a.b.c should remain unchanged after failed Set: got %d", got)
+		}
+	})
 
-	// Object
-	var obj demoObj
-	if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
-		t.Fatalf("Object: %v", err)
-	}
-	if obj.N != 456 || obj.S != "k" {
-		t.Fatalf("obj: %+v", obj)
-	}
+	t.Run("object", func(t *testing.T) {
+		var obj demoObj
+		if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
+			t.Fatalf("Object: %v", err)
+		}
+		if obj.N != 456 || obj.S != "k" {
+			t.Fatalf("obj: %+v", obj)
+		}
+	})
 }
 
 func TestLoad_RefPrefersConfigPathOverEnvironment(t *testing.T) {

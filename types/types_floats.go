@@ -8,34 +8,39 @@ import (
 	"strconv"
 )
 
+var _ flag.Value = (*Fund)(nil)
+var _ flag.Getter = (*Fund)(nil)
 var _ flag.Value = (*Found)(nil)
 var _ flag.Getter = (*Found)(nil)
 
-// Found represents a found value with precision up to two decimal places.
-type Found float64
+// Fund is a two-decimal monetary/amount value for flags and YAML.
+type Fund float64
+
+// Found is a historical alias of Fund.
+type Found = Fund
 
 // String implements flag.Value
-func (p Found) String() string {
+func (p Fund) String() string {
 	return fmt.Sprintf("%0.2f", p)
 }
 
 // Set implements flag.Value
-func (p *Found) Set(f string) error {
+func (p *Fund) Set(f string) error {
 	d, err := strconv.ParseFloat(f, 64)
 	if err != nil {
 		return err
 	}
-	*p = Found(d)
+	*p = Fund(d)
 	return nil
 }
 
 // Get implements flag.Getter.
-func (p Found) Get() any {
+func (p Fund) Get() any {
 	return float64(p)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (p *Found) UnmarshalYAML(unmarshal func(any) error) error {
+func (p *Fund) UnmarshalYAML(unmarshal func(any) error) error {
 	var f float64
 	if err := unmarshal(&f); err != nil {
 		return err
@@ -44,7 +49,7 @@ func (p *Found) UnmarshalYAML(unmarshal func(any) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (p *Found) MarshalYAML() (any, error) {
+func (p *Fund) MarshalYAML() (any, error) {
 	if p == nil {
 		return 0, nil
 	}
@@ -86,7 +91,7 @@ func ToFloat64(value any) (float64, error) {
 		return strconv.ParseFloat(t, 64)
 	case json.Number:
 		return t.Float64()
-	case Found:
+	case Fund:
 		return float64(t), nil
 	default:
 		return 0, fmt.Errorf("types: cannot convert %T to float64", value)

@@ -1,6 +1,6 @@
 module github.com/ymhhh/go-common
 
-go 1.25.0
+go 1.24
 
 require (
 	github.com/dimiro1/banner v1.1.0
