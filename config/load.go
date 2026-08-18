@@ -55,9 +55,7 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 	incs := make([]string, 0, len(incFromLines))
 	incs = append(incs, incFromLines...)
 	if v, ok := root[includeKey]; ok {
-		for _, s := range toStringSlice(v) {
-			incs = append(incs, s)
-		}
+		incs = append(incs, toStringSlice(v)...)
 		delete(root, includeKey)
 	}
 

@@ -8,6 +8,7 @@ import (
 )
 
 func TestTraceFields_nilContext(t *testing.T) {
+	//nolint:staticcheck // TraceFields documents nil ctx as a valid empty input.
 	if got := TraceFields(nil); got != nil {
 		t.Fatalf("TraceFields(nil) = %v, want nil", got)
 	}

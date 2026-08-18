@@ -37,4 +37,3 @@ func TestDecodeToObject_string_structTypeField(t *testing.T) {
 		t.Fatalf("Type: %q", out.Type)
 	}
 }
-

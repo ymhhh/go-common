@@ -86,7 +86,7 @@ func resolveString(s string, lookup refLookup, visiting map[string]bool) (any, e
 		case string:
 			b.WriteString(x)
 		default:
-			b.WriteString(fmt.Sprint(x))
+			fmt.Fprint(&b, x)
 		}
 		last = m[1]
 	}

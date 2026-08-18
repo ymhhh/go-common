@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -61,6 +62,8 @@ func TestToInt64(t *testing.T) {
 	// invalid type
 	if _, err := ToInt64(true); err == nil {
 		t.Fatalf("expected error for bool")
+	} else if !strings.Contains(err.Error(), "cannot convert bool to int64") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -116,5 +119,7 @@ func TestToInt(t *testing.T) {
 	// invalid type
 	if _, err := ToInt([]int{1}); err == nil {
 		t.Fatalf("expected error for slice")
+	} else if !strings.Contains(err.Error(), "cannot convert []int to int") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

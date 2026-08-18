@@ -11,7 +11,7 @@ import (
 func rotateEnabled(cfg Config) bool {
 	r := cfg.File.Rotate
 	return r.Enabled || r.MaxSizeMB > 0 || r.MaxBackups > 0 ||
-		r.MaxAgeDays > 0 || r.Compress || r.LocalTime
+		r.MaxAgeDays > 0 || r.Compress
 }
 
 func resolveOutputPath(cfg Config, baseDir string) (string, error) {

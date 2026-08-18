@@ -59,11 +59,33 @@ func TestParseStringByteSize(t *testing.T) {
 	if got := ParseStringByteSize("bad"); got != nil {
 		t.Fatalf("expected nil, got %v", got)
 	}
+
+	got = ParseStringByteSize("10MB")
+	want = new(big.Int).Mul(big.NewInt(10), _MByte)
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("10MB: got=%v want=%v", got, want)
+	}
+	got = ParseStringByteSize("2KB")
+	want = new(big.Int).Mul(big.NewInt(2), _KByte)
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("2KB: got=%v want=%v", got, want)
+	}
+	got = ParseStringByteSize("1.5KiB")
+	want = big.NewInt(1536)
+	if got == nil || got.Cmp(want) != 0 {
+		t.Fatalf("1.5KiB: got=%v want=%v", got, want)
+	}
 }
 
 func TestParseStringTime(t *testing.T) {
 	if got := ParseStringTime("2s"); got != 2*time.Second {
 		t.Fatalf("2s: got %v", got)
+	}
+	if got := ParseStringTime("2S"); got != 2*time.Second {
+		t.Fatalf("2S: got %v", got)
+	}
+	if got := ParseStringTime("1H"); got != time.Hour {
+		t.Fatalf("1H: got %v", got)
 	}
 	if got := ParseStringTime("3m"); got != 3*time.Minute {
 		t.Fatalf("3m: got %v", got)

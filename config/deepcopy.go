@@ -42,7 +42,7 @@ func DeepCopy(value any) any {
 		return deepCopySlice(rv).Interface()
 	case reflect.Array:
 		return deepCopyArray(rv).Interface()
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if rv.IsNil() {
 			return nil
 		}

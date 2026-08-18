@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"math"
-	"reflect"
 	"strconv"
 )
 
@@ -52,7 +51,7 @@ func (p *Found) MarshalYAML() (any, error) {
 	return *p, nil
 }
 
-// ToFloat64 covert any type to float64
+// ToFloat64 converts any supported scalar type to float64.
 func ToFloat64(value any) (float64, error) {
 	if value == nil {
 		return 0, nil
@@ -65,13 +64,23 @@ func ToFloat64(value any) (float64, error) {
 		return float64(t), nil
 	case int:
 		return float64(t), nil
+	case int64:
+		return float64(t), nil
 	case int32:
 		return float64(t), nil
-	case int64:
+	case int16:
 		return float64(t), nil
 	case int8:
 		return float64(t), nil
-	case int16:
+	case uint:
+		return float64(t), nil
+	case uint64:
+		return float64(t), nil
+	case uint32:
+		return float64(t), nil
+	case uint16:
+		return float64(t), nil
+	case uint8:
 		return float64(t), nil
 	case string:
 		return strconv.ParseFloat(t, 64)
@@ -80,7 +89,7 @@ func ToFloat64(value any) (float64, error) {
 	case Found:
 		return float64(t), nil
 	default:
-		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
+		return 0, fmt.Errorf("types: cannot convert %T to float64", value)
 	}
 }
 

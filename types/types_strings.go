@@ -69,11 +69,15 @@ func (p *Secret) UnmarshalJSON(data []byte) error {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Secret.
 func (p *Secret) UnmarshalYAML(value *yaml.Node) error {
-	if value == nil || value.Value == "" {
+	if value == nil || value.Tag == "!!null" {
 		*p = Secret("")
 		return nil
 	}
-	*p = Secret(value.Value)
+	var s string
+	if err := value.Decode(&s); err != nil {
+		return err
+	}
+	*p = Secret(s)
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -64,7 +65,7 @@ func FindStringSubmatchMap(s string, re *regexp.Regexp) (map[string]string, bool
 
 // ParseStringByteSize return big size
 func ParseStringByteSize(key string, defValue ...*big.Int) *big.Int {
-	groups, matched := FindStringSubmatchMap(key, bitRe)
+	groups, matched := FindStringSubmatchMap(strings.ToLower(key), bitRe)
 	if !matched {
 		return defaultByteSize(defValue...)
 	}
@@ -130,7 +131,7 @@ func parseByteSizeValue(value string, unit *big.Int, defValue ...*big.Int) *big.
 // (e.g. "2s", "0d", "1.5h"). ok is false when s does not match.
 // A successful parse of zero (e.g. "0d", "0s") returns (0, true).
 func ParseStringTimeOK(s string) (time.Duration, bool) {
-	groups, matched := FindStringSubmatchMap(s, timeRe)
+	groups, matched := FindStringSubmatchMap(strings.ToLower(s), timeRe)
 	if !matched {
 		return 0, false
 	}

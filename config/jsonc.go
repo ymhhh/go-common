@@ -54,7 +54,7 @@ func stripJSONComments(in []byte) ([]byte, error) {
 		if c == '/' && i+1 < len(in) && in[i+1] == '*' {
 			out = append(out, ' ', ' ')
 			i += 2
-			for i+1 < len(in) && !(in[i] == '*' && in[i+1] == '/') {
+			for i+1 < len(in) && (in[i] != '*' || in[i+1] != '/') {
 				if in[i] == '\n' {
 					out = append(out, '\n')
 				} else {

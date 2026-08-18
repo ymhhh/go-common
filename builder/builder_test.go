@@ -1,6 +1,9 @@
 package builder
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func withBuildVars(t *testing.T, fn func()) {
 	t.Helper()
@@ -40,6 +43,30 @@ func TestOptions(t *testing.T) {
 	}
 	if !o.OnColor {
 		t.Fatalf("OnColor: expected true")
+	}
+
+	on := &Options{OnShow: true}
+	OffShow()(on)
+	if on.OnShow {
+		t.Fatalf("OffShow: expected false")
+	}
+}
+
+func TestFormatBannerTitle(t *testing.T) {
+	got := formatBannerTitle("")
+	if !strings.Contains(got, defaultBannerName) {
+		t.Fatalf("empty name fallback: %q", got)
+	}
+	if len(got) != len(bannerBorder) {
+		t.Fatalf("title width: got %d want %d (%q)", len(got), len(bannerBorder), got)
+	}
+
+	got = formatBannerTitle("my-app")
+	if !strings.Contains(got, "my-app") {
+		t.Fatalf("program name: %q", got)
+	}
+	if strings.Contains(got, "YMHHH") {
+		t.Fatalf("hardcoded library title should not appear: %q", got)
 	}
 }
 
@@ -86,6 +113,6 @@ func TestShow_NoPanic(t *testing.T) {
 		Show()
 		Show(Color("{{ .AnsiColor.Cyan }}"))
 		Show(OnShow(), OnColor())
+		Show(OffShow())
 	})
 }
-

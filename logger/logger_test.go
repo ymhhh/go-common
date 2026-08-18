@@ -98,6 +98,50 @@ func TestFromConfig_FilePathWithoutOutputUsesFile(t *testing.T) {
 	}
 }
 
+func TestRotateEnabled_IgnoresLocalTime(t *testing.T) {
+	if rotateEnabled(Config{}) {
+		t.Fatal("empty config should not rotate")
+	}
+
+	var localOnly Config
+	localOnly.File.Rotate.LocalTime = true
+	if rotateEnabled(localOnly) {
+		t.Fatal("LocalTime alone should not enable rotation")
+	}
+
+	var enabled Config
+	enabled.File.Rotate.Enabled = true
+	if !rotateEnabled(enabled) {
+		t.Fatal("Enabled should enable rotation")
+	}
+}
+
+func TestFromConfig_LocalTimeDoesNotCreateRotator(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	opts := config.Options{
+		"logger": map[string]any{
+			"level":  "info",
+			"format": "text",
+			"output": "file:" + path,
+			"file": map[string]any{
+				"rotate": map[string]any{
+					"localTime": true,
+				},
+			},
+		},
+	}
+
+	l, err := FromConfig(opts.ToConfig())
+	if err != nil {
+		t.Fatalf("FromConfig: %v", err)
+	}
+	defer func() { _ = l.Close() }()
+
+	if _, ok := l.Out.(*rotatorr.Logger); ok {
+		t.Fatal("LocalTime should not create a rotating writer")
+	}
+}
+
 func TestFromConfig_FileRotate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tmp.log")
 	opts := config.Options{

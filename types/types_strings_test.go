@@ -81,6 +81,19 @@ func TestSecret_YAML(t *testing.T) {
 	if round.S.String() != Hidden {
 		t.Fatalf("String after unmarshal: got %q", round.S.String())
 	}
+
+	var empty cfg
+	if err := yaml.Unmarshal([]byte("s:\n"), &empty); err != nil {
+		t.Fatalf("empty scalar: %v", err)
+	}
+	if string(empty.S) != "" {
+		t.Fatalf("empty scalar: got %q", string(empty.S))
+	}
+
+	var seq cfg
+	if err := yaml.Unmarshal([]byte("s:\n  - not-a-secret\n"), &seq); err == nil {
+		t.Fatalf("sequence should not unmarshal as Secret")
+	}
 }
 
 func TestSecret_JSON(t *testing.T) {

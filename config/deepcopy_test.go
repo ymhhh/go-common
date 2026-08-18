@@ -102,6 +102,9 @@ func TestDeepCopy_empty(t *testing.T) {
 		t.Fatalf("empty []any copy: len %d", len(cp3))
 	}
 	cp3 = append(cp3, 1)
+	if len(cp3) != 1 {
+		t.Fatalf("append to copy: len %d", len(cp3))
+	}
 	if len(emptySl) != 0 {
 		t.Fatal("append to copy of empty slice affected original")
 	}

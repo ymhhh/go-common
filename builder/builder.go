@@ -3,6 +3,7 @@ package builder
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dimiro1/banner"
 	"github.com/mattn/go-colorable"
@@ -19,10 +20,15 @@ var (
 	Author          string
 )
 
-const bannerLogo = `%s*******************************************************************
-*******************************************************************
-***                YMHHH GO COMMON BUILDER                      ***
-*******************************************************************
+const (
+	bannerBorder      = "*******************************************************************"
+	defaultBannerName = "GO COMMON BUILDER"
+)
+
+const bannerLogo = `%s` + bannerBorder + `
+` + bannerBorder + `
+%s
+` + bannerBorder + `
 ******************** Compile Environment **************************
 *** Program Name     : %s
 *** Program Version  : %s
@@ -31,7 +37,7 @@ const bannerLogo = `%s**********************************************************
 *** Compiler Version : %s
 *** Build Time       : %s
 *** Author           : %s
-*******************************************************************
+` + bannerBorder + `
 ******************** Running Environment **************************
 *** GO ROOT            : {{ .GOROOT }}
 *** Go running version : {{ .GoVersion }}
@@ -39,8 +45,8 @@ const bannerLogo = `%s**********************************************************
 *** Go running OS      : {{ .GOOS }} {{ .GOARCH }}
 *** Go CPU Numbers     : {{ .NumCPU }}
 *** Startup time       : {{ .Now "2006-01-02 15:04:05 (Monday)" }}
-*******************************************************************
-*******************************************************************
+` + bannerBorder + `
+` + bannerBorder + `
 `
 
 type Option func(*Options)
@@ -62,15 +68,38 @@ func OnShow() Option {
 	}
 }
 
+func OffShow() Option {
+	return func(o *Options) {
+		o.OnShow = false
+	}
+}
+
 func OnColor() Option {
 	return func(o *Options) {
 		o.OnColor = true
 	}
 }
 
-// Show displays project information
+func formatBannerTitle(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = defaultBannerName
+	}
+
+	inner := utf8.RuneCountInString(bannerBorder) - 6
+	runes := []rune(name)
+	if len(runes) > inner {
+		runes = runes[:inner]
+		name = string(runes)
+	}
+	left := (inner - len(runes)) / 2
+	right := inner - len(runes) - left
+	return "***" + strings.Repeat(" ", left) + name + strings.Repeat(" ", right) + "***"
+}
+
+// Show displays project information. Printing is on by default; pass OffShow to disable.
 func Show(opts ...Option) {
-	options := &Options{}
+	options := &Options{OnShow: true}
 	for _, o := range opts {
 		o(options)
 	}
@@ -79,7 +108,7 @@ func Show(opts ...Option) {
 		options.Color = "{{ .AnsiColor.Default }}"
 	}
 
-	newBanner := fmt.Sprintf(bannerLogo, options.Color,
+	newBanner := fmt.Sprintf(bannerLogo, options.Color, formatBannerTitle(ProgramName),
 		ProgramName, ProgramVersion,
 		ProgramBranch, ProgramRevision,
 		CompilerVersion, BuildTime, Author)

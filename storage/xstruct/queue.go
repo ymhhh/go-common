@@ -10,9 +10,9 @@ import (
 // It keeps a dummy head node so enqueue/dequeue can update head/tail without
 // special empty-queue CAS races.
 type Queue[T any] struct {
-	head  atomic.Pointer[node[T]]
-	tail  atomic.Pointer[node[T]]
-	once  sync.Once
+	head atomic.Pointer[node[T]]
+	tail atomic.Pointer[node[T]]
+	once sync.Once
 }
 
 func NewQueue[T any]() *Queue[T] {
@@ -20,7 +20,8 @@ func NewQueue[T any]() *Queue[T] {
 	q := &Queue[T]{}
 	q.head.Store(dummy)
 	q.tail.Store(dummy)
-	q.once.Do(func() {}) // mark as initialized
+	// Consume once so zero-value lazy init in init() is a no-op after NewQueue.
+	q.once.Do(func() {})
 	return q
 }
 

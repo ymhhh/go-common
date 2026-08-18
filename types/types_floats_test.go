@@ -1,7 +1,10 @@
 package types
 
 import (
+	"encoding/json"
 	"flag"
+	"math"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -51,3 +54,34 @@ func TestFound_YAML(t *testing.T) {
 	}
 }
 
+func TestToFloat64(t *testing.T) {
+	if got, err := ToFloat64(nil); err != nil || got != 0 {
+		t.Fatalf("nil: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(float64(1.5)); err != nil || got != 1.5 {
+		t.Fatalf("float64: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(int64(12)); err != nil || got != 12 {
+		t.Fatalf("int64: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(uint32(9)); err != nil || got != 9 {
+		t.Fatalf("uint32: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(uint64(math.MaxUint32)); err != nil || got != float64(math.MaxUint32) {
+		t.Fatalf("uint64: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64("2.5"); err != nil || got != 2.5 {
+		t.Fatalf("string: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(json.Number("1e2")); err != nil || got != 100 {
+		t.Fatalf("json.Number: got=%v err=%v", got, err)
+	}
+	if got, err := ToFloat64(Found(3.25)); err != nil || got != 3.25 {
+		t.Fatalf("Found: got=%v err=%v", got, err)
+	}
+	if _, err := ToFloat64(true); err == nil {
+		t.Fatalf("expected error for bool")
+	} else if !strings.Contains(err.Error(), "cannot convert bool to float64") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

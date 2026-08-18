@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"reflect"
 	"strconv"
 )
 
@@ -44,7 +43,7 @@ func ToInt64(value any) (int64, error) {
 	case string:
 		return strconv.ParseInt(v, 10, 64)
 	default:
-		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
+		return 0, fmt.Errorf("types: cannot convert %T to int64", value)
 	}
 }
 
@@ -87,7 +86,7 @@ func ToInt(value any) (int, error) {
 	case string:
 		return strconv.Atoi(v)
 	default:
-		return 0, fmt.Errorf("type is valid: %s", reflect.TypeOf(value).String())
+		return 0, fmt.Errorf("types: cannot convert %T to int", value)
 	}
 }
 

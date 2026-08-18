@@ -10,6 +10,9 @@ func TestContains_Index_Remove_Unique(t *testing.T) {
 	if !Contains(s, 2) {
 		t.Fatalf("Contains")
 	}
+	if !ContainsFunc(s, func(v int) bool { return v == 3 }) {
+		t.Fatalf("ContainsFunc")
+	}
 	if Index(s, 3) != 2 {
 		t.Fatalf("Index")
 	}

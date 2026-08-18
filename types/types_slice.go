@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"sort"
 )
 
@@ -14,6 +15,11 @@ func Contains[T comparable](slice []T, value T) bool {
 		}
 	}
 	return false
+}
+
+// ContainsFunc reports whether any element satisfies fn.
+func ContainsFunc[T any](slice []T, fn func(T) bool) bool {
+	return slices.ContainsFunc(slice, fn)
 }
 
 // Index returns the index of the first occurrence of value in slice, or -1 if not found.
