@@ -263,16 +263,12 @@ func (c *Tree) GetConfig(key string) Config {
 	return &Tree{root: DeepCopy(m).(map[string]any), baseDir: c.baseDir}
 }
 
+// GetValuesConfig returns the subtree at key as a Config.
+//
+// Deprecated: use GetConfig. Missing keys and non-map values return an empty
+// Config instead of panicking.
 func (c *Tree) GetValuesConfig(key string) Config {
-	v, ok := getPath(c.root, key)
-	if !ok {
-		panic(fmt.Sprintf("config: path not found: %s", key))
-	}
-	m, ok := v.(map[string]any)
-	if !ok {
-		panic(fmt.Sprintf("config: %q is not a map[string]any (got %T)", key, v))
-	}
-	return &Tree{root: DeepCopy(m).(map[string]any), baseDir: c.baseDir}
+	return c.GetConfig(key)
 }
 
 func (c *Tree) SetKeyValue(key string, value any) error {

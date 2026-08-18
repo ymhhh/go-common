@@ -103,10 +103,11 @@ func Unique[T comparable](slice []T) []T {
 	return result
 }
 
-// Chunk splits slice into chunks of specified size
+// Chunk splits slice into chunks of specified size.
+// A non-positive size returns nil.
 func Chunk[T any](slice []T, size int) [][]T {
 	if size <= 0 {
-		panic("chunk size must be greater than 0")
+		return nil
 	}
 
 	if len(slice) == 0 {
@@ -305,28 +306,26 @@ func Shuffle[T any](slice []T) []T {
 	return result
 }
 
-// Take returns first n elements of slice
+// Take returns a copy of the first n elements of slice.
 func Take[T any](slice []T, n int) []T {
 	if n <= 0 {
 		return nil
 	}
 	if n >= len(slice) {
-		return slice
+		return slices.Clone(slice)
 	}
-	result := make([]T, n)
-	copy(result, slice[:n])
-	return result
+	return slices.Clone(slice[:n])
 }
 
-// Drop returns slice with first n elements removed
+// Drop returns a copy of slice with the first n elements removed.
 func Drop[T any](slice []T, n int) []T {
 	if n <= 0 {
-		return slice
+		return slices.Clone(slice)
 	}
 	if n >= len(slice) {
 		return nil
 	}
-	return slice[n:]
+	return slices.Clone(slice[n:])
 }
 
 // Zip combines two slices into pairs
@@ -373,12 +372,18 @@ func Convert[T any, R any](slice []T, converter func(T) R) []R {
 	return Map(slice, converter)
 }
 
-// Sort sorts slice using less function.
+// Sort returns a sorted copy of slice using less. The input is not modified.
 func Sort[T any](slice []T, less func(T, T) bool) []T {
+	result := slices.Clone(slice)
+	SortInPlace(result, less)
+	return result
+}
+
+// SortInPlace sorts slice in place using less.
+func SortInPlace[T any](slice []T, less func(T, T) bool) {
 	sort.Slice(slice, func(i, j int) bool {
 		return less(slice[i], slice[j])
 	})
-	return slice
 }
 
 // Sum calculates sum of numeric slice

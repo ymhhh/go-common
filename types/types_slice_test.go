@@ -39,20 +39,52 @@ func TestRemove_DoesNotMutateInput(t *testing.T) {
 	}
 }
 
-func TestChunk_PanicsOnBadSize(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic")
-		}
-	}()
-	_ = Chunk([]int{1, 2}, 0)
+func TestChunk_NonPositiveSize(t *testing.T) {
+	if got := Chunk([]int{1, 2}, 0); got != nil {
+		t.Fatalf("size 0: %#v", got)
+	}
+	if got := Chunk([]int{1, 2}, -1); got != nil {
+		t.Fatalf("negative size: %#v", got)
+	}
 }
 
-func TestSort_MutatesSlice(t *testing.T) {
+func TestSort_DoesNotMutateInput(t *testing.T) {
 	s := []int{3, 1, 2}
-	_ = Sort(s, func(a, b int) bool { return a < b })
-	if s[0] != 1 || s[1] != 2 || s[2] != 3 {
-		t.Fatalf("sort: %#v", s)
+	got := Sort(s, func(a, b int) bool { return a < b })
+	if !reflect.DeepEqual(s, []int{3, 1, 2}) {
+		t.Fatalf("Sort mutated input: %#v", s)
+	}
+	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+		t.Fatalf("Sort result: %#v", got)
+	}
+}
+
+func TestSortInPlace_MutatesSlice(t *testing.T) {
+	s := []int{3, 1, 2}
+	SortInPlace(s, func(a, b int) bool { return a < b })
+	if !reflect.DeepEqual(s, []int{1, 2, 3}) {
+		t.Fatalf("SortInPlace: %#v", s)
+	}
+}
+
+func TestTakeDrop_CopyIsolation(t *testing.T) {
+	s := []int{1, 2, 3}
+	taken := Take(s, 10)
+	taken[0] = 9
+	if s[0] != 1 {
+		t.Fatalf("Take aliased input: %#v", s)
+	}
+
+	dropped := Drop(s, 1)
+	dropped[0] = 8
+	if s[1] != 2 {
+		t.Fatalf("Drop aliased input: %#v", s)
+	}
+
+	kept := Drop(s, 0)
+	kept[0] = 7
+	if s[0] != 1 {
+		t.Fatalf("Drop(0) aliased input: %#v", s)
 	}
 }
 

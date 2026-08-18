@@ -366,17 +366,17 @@ func TestManager_ToObjectCompatibility(t *testing.T) {
 	}
 }
 
-func TestManager_GetValuesConfig_Panic(t *testing.T) {
+func TestManager_GetValuesConfig_MissingOrNonMap(t *testing.T) {
 	c := newTestTree(map[string]any{
 		"bad": 1,
 	})
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic")
-		}
-	}()
-	_ = c.GetValuesConfig("bad")
+	if got := c.GetValuesConfig("bad"); !got.IsEmpty() {
+		t.Fatalf("non-map should return empty config, got %#v", got)
+	}
+	if got := c.GetValuesConfig("missing"); !got.IsEmpty() {
+		t.Fatalf("missing key should return empty config, got %#v", got)
+	}
 }
 
 func TestManager_GetRootKeys_IsEmpty(t *testing.T) {

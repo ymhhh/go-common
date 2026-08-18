@@ -8,56 +8,47 @@ import (
 // Config is a high-level, getter-oriented view of a configuration tree.
 //
 // The concrete type in this package is *Tree.
+//
+// Typed getters (GetString, GetInt, …) return the provided default when the
+// path is missing or the value cannot be converted. Use GetOK plus Value
+// methods when conversion errors must be distinguished from defaults.
 type Config interface {
-	// Dot-path accessors used throughout this package.
 	Get(path string) Value
 	GetOK(path string) (Value, bool)
 	Set(path string, value any) error
 	Resolve() error
 
-	// GetInterface get a object
 	GetInterface(key string, defValue ...any) (res any)
-	// GetString get a string
 	GetString(key string, defValue ...string) (res string)
-	// GetBoolean get a bool
 	GetBoolean(key string, defValue ...bool) (b bool)
-	// GetInt get a int
 	GetInt(key string, defValue ...int) (res int)
-	// GetFloat get a float
 	GetFloat(key string, defValue ...float64) (res float64)
-	// GetList get list of objects
 	GetList(key string) (res []any)
-	// GetStringList get list of strings
 	GetStringList(key string) []string
-	// GetBooleanList get list of bools
 	GetBooleanList(key string) []bool
-	// GetIntList get list of ints
 	GetIntList(key string) []int
-	// GetFloatList get list of float64s
 	GetFloatList(key string) []float64
-	// GetTimeDuration get time duration by (int)(uint), exp: 1s, 1day
+	// GetTimeDuration parses a duration. Numeric values are nanoseconds;
+	// strings accept units such as "1s" or "1d".
 	GetTimeDuration(key string, defValue ...time.Duration) time.Duration
-	// GetByteSize get byte size by (int)(uint), exp: 1k, 1m
+	// GetByteSize parses a byte size. Numeric values are raw bytes;
+	// strings accept units such as "1k" or "1m".
 	GetByteSize(key string, defValue ...*big.Int) *big.Int
-	// GetMap get map value
 	GetMap(key string) Options
-	// GetConfig get key's config
 	GetConfig(key string) Config
-	// ToObject unmarshal values to object.
+	// ToObject unmarshals a subtree into model.
 	//
 	// Deprecated: use Object(model, WithObjectPath(key)).
 	ToObject(key string, model any) error
-	// Object unmarshal values to object
 	Object(model any, opts ...ObjOption) error
-	// GetValuesConfig get key's values if values can be Config, or panic
+	// GetValuesConfig returns the subtree at key as a Config.
+	//
+	// Deprecated: use GetConfig. Missing keys and non-map values return an
+	// empty Config instead of panicking.
 	GetValuesConfig(key string) Config
-	// SetKeyValue set key's value into config
 	SetKeyValue(key string, value any) (err error)
-	// Dump get all config
 	Dump() (bs []byte, err error)
-	// GetKeys get root keys
 	GetRootKeys() []string
-	// Copy deep copy configs
 	Copy() Config
 	IsEmpty() bool
 }

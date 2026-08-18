@@ -7,8 +7,10 @@
 - 支持 `#include` 合并多文件配置（后者覆盖前者）
 - 支持 `${a.b.c}` 引用其它配置项、`${ENV}` 引用环境变量
 - 支持 `Get` / `GetOK` / `Set` 点路径读写
+- 类型化 `GetString` / `GetInt` 等在路径缺失或无法转换时返回 default；需要区分错误时用 `GetOK` + `Value`
 - 支持 `Object(&obj, WithObjectPath(path))` 将子树反序列化到结构体（`path==""` 表示整棵配置）
 - `GetMap` / `GetConfig` 返回深拷贝，外部修改不影响原始配置树
+- `GetValuesConfig` 已废弃，请改用 `GetConfig`（缺 key / 非 map 返回空配置，不再 panic）
 - 未定义的 `${REF}` 引用在 `Load` 时会返回错误
 
 **导入**：`github.com/ymhhh/go-common/config`
