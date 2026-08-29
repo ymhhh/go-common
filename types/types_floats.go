@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 )
 
@@ -63,36 +64,20 @@ func ToFloat64(value any) (float64, error) {
 	}
 
 	switch t := value.(type) {
-	case float64:
-		return t, nil
-	case float32:
-		return float64(t), nil
-	case int:
-		return float64(t), nil
-	case int64:
-		return float64(t), nil
-	case int32:
-		return float64(t), nil
-	case int16:
-		return float64(t), nil
-	case int8:
-		return float64(t), nil
-	case uint:
-		return float64(t), nil
-	case uint64:
-		return float64(t), nil
-	case uint32:
-		return float64(t), nil
-	case uint16:
-		return float64(t), nil
-	case uint8:
-		return float64(t), nil
-	case string:
-		return strconv.ParseFloat(t, 64)
 	case json.Number:
 		return t.Float64()
-	case Fund:
-		return float64(t), nil
+	case string:
+		return strconv.ParseFloat(t, 64)
+	}
+
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Float32, reflect.Float64:
+		return rv.Float(), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(rv.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return float64(rv.Uint()), nil
 	default:
 		return 0, fmt.Errorf("types: cannot convert %T to float64", value)
 	}

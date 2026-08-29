@@ -141,26 +141,29 @@ func TestStrings_YAML_SequenceAndFlow(t *testing.T) {
 		Tags Strings `yaml:"tags"`
 	}
 
-	const block = `
-tags:
-  - a
-  - b
-`
-	var c1 cfg
-	if err := yaml.Unmarshal([]byte(block), &c1); err != nil {
-		t.Fatalf("unmarshal block: %v", err)
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{name: "block", in: "tags:\n  - a\n  - b\n", want: []string{"a", "b"}},
+		{name: "flow", in: `tags: [x, y]`, want: []string{"x", "y"}},
 	}
-	if len(c1.Tags) != 2 || c1.Tags[0] != "a" || c1.Tags[1] != "b" {
-		t.Fatalf("block: %#v", []string(c1.Tags))
-	}
-
-	const flow = `tags: [x, y]`
-	var c2 cfg
-	if err := yaml.Unmarshal([]byte(flow), &c2); err != nil {
-		t.Fatalf("unmarshal flow: %v", err)
-	}
-	if len(c2.Tags) != 2 || c2.Tags[0] != "x" || c2.Tags[1] != "y" {
-		t.Fatalf("flow: %#v", []string(c2.Tags))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c cfg
+			if err := yaml.Unmarshal([]byte(tt.in), &c); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if len(c.Tags) != len(tt.want) {
+				t.Fatalf("got %#v, want %#v", []string(c.Tags), tt.want)
+			}
+			for i, w := range tt.want {
+				if c.Tags[i] != w {
+					t.Fatalf("got %#v, want %#v", []string(c.Tags), tt.want)
+				}
+			}
+		})
 	}
 
 	out, err := yaml.Marshal(&cfg{Tags: Strings{"p", "q"}})

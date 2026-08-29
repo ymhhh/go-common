@@ -196,20 +196,30 @@ func TestManager_GetByteSizeRejectsUnsafeNumericConversions(t *testing.T) {
 		"json_huge":               json.Number("1e200"),
 	})
 
-	if got := c.GetByteSize("fractional", def); got == nil || got.Cmp(def) != 0 {
-		t.Fatalf("fractional byte size should fall back to default, got %v", got)
+	tests := []struct {
+		name string
+		key  string
+		def  *big.Int
+		want *big.Int
+	}{
+		{name: "fractional uses default", key: "fractional", def: def, want: def},
+		{name: "json fractional uses default", key: "json_fractional", def: def, want: def},
+		{name: "precise json fractional uses default", key: "json_fractional_precise", def: def, want: def},
+		{name: "huge float keeps decimal", key: "huge", want: hugeWant},
+		{name: "huge json keeps exact decimal", key: "json_huge", want: exactHugeWant},
 	}
-	if got := c.GetByteSize("json_fractional", def); got == nil || got.Cmp(def) != 0 {
-		t.Fatalf("fractional JSON byte size should fall back to default, got %v", got)
-	}
-	if got := c.GetByteSize("json_fractional_precise", def); got == nil || got.Cmp(def) != 0 {
-		t.Fatalf("precise fractional JSON byte size should fall back to default, got %v", got)
-	}
-	if got := c.GetByteSize("huge"); got == nil || got.Cmp(hugeWant) != 0 {
-		t.Fatalf("huge byte size should not narrow through int64: got=%v want=%v", got, hugeWant)
-	}
-	if got := c.GetByteSize("json_huge"); got == nil || got.Cmp(exactHugeWant) != 0 {
-		t.Fatalf("huge JSON byte size should preserve exact decimal value: got=%v want=%v", got, exactHugeWant)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got *big.Int
+			if tt.def != nil {
+				got = c.GetByteSize(tt.key, tt.def)
+			} else {
+				got = c.GetByteSize(tt.key)
+			}
+			if got == nil || got.Cmp(tt.want) != 0 {
+				t.Fatalf("got=%v want=%v", got, tt.want)
+			}
+		})
 	}
 }
 

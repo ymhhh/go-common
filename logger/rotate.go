@@ -250,27 +250,34 @@ func purgeBackups(mainPath string, rc rotateConfig, skipFile string) {
 		return
 	}
 
-	cutoff := time.Now().Add(-time.Duration(rc.MaxAgeDays) * 24 * time.Hour)
-	remaining := make([]backupFile, 0, len(files))
+	remaining := expireOldBackups(files, rc.MaxAgeDays, skipFile)
+	trimBackupsOverMax(remaining, rc.MaxBackups, skipFile)
+}
 
+func expireOldBackups(files []backupFile, maxAgeDays int, skipFile string) []backupFile {
+	cutoff := time.Now().Add(-time.Duration(maxAgeDays) * 24 * time.Hour)
+	remaining := make([]backupFile, 0, len(files))
 	for _, file := range files {
 		if skipFile != "" && file.path == skipFile {
 			remaining = append(remaining, file)
 			continue
 		}
-		if rc.MaxAgeDays > 0 && file.modTime.Before(cutoff) {
+		if maxAgeDays > 0 && file.modTime.Before(cutoff) {
 			_ = os.Remove(file.path)
 			continue
 		}
 		remaining = append(remaining, file)
 	}
+	return remaining
+}
 
-	if rc.MaxBackups <= 0 {
+func trimBackupsOverMax(files []backupFile, maxBackups int, skipFile string) {
+	if maxBackups <= 0 {
 		return
 	}
 
-	byIndex := make(map[int][]backupFile, len(remaining))
-	for _, file := range remaining {
+	byIndex := make(map[int][]backupFile, len(files))
+	for _, file := range files {
 		byIndex[file.index] = append(byIndex[file.index], file)
 	}
 
@@ -281,7 +288,7 @@ func purgeBackups(mainPath string, rc rotateConfig, skipFile string) {
 	sort.Ints(indices)
 
 	for _, index := range indices {
-		if index <= rc.MaxBackups {
+		if index <= maxBackups {
 			continue
 		}
 		for _, file := range byIndex[index] {

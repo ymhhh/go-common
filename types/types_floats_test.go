@@ -70,6 +70,7 @@ func TestToFloat64(t *testing.T) {
 		{name: "json.Number", in: json.Number("1e2"), want: 100},
 		{name: "Found", in: Found(3.25), want: 3.25},
 		{name: "Fund", in: Fund(3.25), want: 3.25},
+		{name: "named int", in: namedInt(9), want: 9},
 		{name: "bool", in: true, wantErr: "cannot convert bool to float64"},
 	}
 

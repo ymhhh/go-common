@@ -50,22 +50,32 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 		return nil, fmt.Errorf("config: parse %s: %w", path, err)
 	}
 
-	baseDir := filepath.Dir(path)
+	incs := collectIncludes(root, incFromLines)
+	merged, err := loadIncludes(filepath.Dir(path), incs, stack)
+	if err != nil {
+		return nil, err
+	}
+	return deepMerge(merged, root), nil
+}
 
-	incs := make([]string, 0, len(incFromLines))
-	incs = append(incs, incFromLines...)
+func collectIncludes(root map[string]any, fromLines []string) []string {
+	incs := make([]string, 0, len(fromLines))
+	incs = append(incs, fromLines...)
 	if v, ok := root[includeKey]; ok {
 		incs = append(incs, toStringSlice(v)...)
 		delete(root, includeKey)
 	}
+	return incs
+}
 
+func loadIncludes(baseDir string, incs []string, stack map[string]struct{}) (map[string]any, error) {
 	merged := map[string]any{}
 	for _, inc := range incs {
 		ip := inc
 		if !filepath.IsAbs(ip) {
 			ip = filepath.Join(baseDir, ip)
 		}
-		ip, err = filepath.Abs(ip)
+		ip, err := filepath.Abs(ip)
 		if err != nil {
 			return nil, fmt.Errorf("config: abs include path: %w", err)
 		}
@@ -75,8 +85,6 @@ func loadFile(path string, stack map[string]struct{}) (map[string]any, error) {
 		}
 		merged = deepMerge(merged, im)
 	}
-
-	merged = deepMerge(merged, root) // current overrides included
 	return merged, nil
 }
 

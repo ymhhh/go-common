@@ -188,25 +188,11 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		return getDef(defValue)
 	}
 
-	switch x := val.Any().(type) {
-	case *big.Int:
-		return new(big.Int).Set(x)
-	case int:
-		return big.NewInt(int64(x))
-	case int64:
-		return big.NewInt(x)
-	case uint64:
-		return new(big.Int).SetUint64(x)
-	case json.Number:
-		if n, ok := jsonNumberByteSize(x); ok {
-			return n
+	if n, handled := byteSizeFromValue(val.Any()); handled {
+		if n == nil {
+			return getDef(defValue)
 		}
-		return getDef(defValue)
-	case float64:
-		if n, ok := float64ByteSize(x); ok {
-			return n
-		}
-		return getDef(defValue)
+		return n
 	}
 
 	s, err := val.String()
@@ -218,6 +204,33 @@ func (c *Tree) GetByteSize(key string, defValue ...*big.Int) *big.Int {
 		return getDef(defValue)
 	}
 	return out
+}
+
+func byteSizeFromValue(v any) (*big.Int, bool) {
+	switch x := v.(type) {
+	case *big.Int:
+		return new(big.Int).Set(x), true
+	case int:
+		return big.NewInt(int64(x)), true
+	case int64:
+		return big.NewInt(x), true
+	case uint64:
+		return new(big.Int).SetUint64(x), true
+	case json.Number:
+		n, ok := jsonNumberByteSize(x)
+		if !ok {
+			return nil, true
+		}
+		return n, true
+	case float64:
+		n, ok := float64ByteSize(x)
+		if !ok {
+			return nil, true
+		}
+		return n, true
+	default:
+		return nil, false
+	}
 }
 
 func jsonNumberByteSize(n json.Number) (*big.Int, bool) {

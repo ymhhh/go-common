@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+type namedInt int
+
 func TestToInt64(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -21,6 +23,7 @@ func TestToInt64(t *testing.T) {
 		{name: "string", in: "34", want: 34},
 		{name: "json.Number", in: json.Number("56"), want: 56},
 		{name: "json.Number exponent", in: json.Number("1e6"), want: 1_000_000},
+		{name: "named int", in: namedInt(9), want: 9},
 		{name: "json.Number fractional", in: json.Number("1.5"), wantErr: "cannot convert"},
 		{name: "uint64 overflow", in: uint64(math.MaxInt64) + 1, wantErr: "cannot convert"},
 		{name: "integral float64", in: float64(78), want: 78},
@@ -59,6 +62,7 @@ func TestToInt(t *testing.T) {
 		{name: "string", in: "34", want: 34},
 		{name: "json.Number", in: json.Number("56"), want: 56},
 		{name: "json.Number exponent", in: json.Number("1e6"), want: 1_000_000},
+		{name: "named int", in: namedInt(9), want: 9},
 		{name: "json.Number fractional", in: json.Number("1.5"), wantErr: "cannot convert"},
 		{name: "uint64 overflow", in: uint64(math.MaxInt) + 1, wantErr: "cannot convert"},
 		{name: "integral float32", in: float32(78), want: 78},

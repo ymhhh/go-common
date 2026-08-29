@@ -23,18 +23,28 @@ func writeFile(t *testing.T, dir, name, content string) string {
 
 func TestLoad_JSONC_Include_Ref_Env_GetSet_Object(t *testing.T) {
 	t.Setenv("ENV", "from-env")
+	cfg := mustLoadJSONCIncludeFixture(t)
 
+	t.Run("override and refs", func(t *testing.T) {
+		assertJSONCOverrideAndRefs(t, cfg)
+	})
+	t.Run("set", func(t *testing.T) {
+		assertJSONCSet(t, cfg)
+	})
+	t.Run("object", func(t *testing.T) {
+		assertJSONCObject(t, cfg)
+	})
+}
+
+func mustLoadJSONCIncludeFixture(t *testing.T) Config {
+	t.Helper()
 	dir := t.TempDir()
-
-	// included config
 	writeFile(t, dir, "inc.yaml", `
 a:
   b:
     c: 123
     s: hi
 `)
-
-	// main config (JSONC) with comments and include directives
 	main := writeFile(t, dir, "main.json", `
 // include as directive line
 #include inc.yaml
@@ -55,61 +65,63 @@ a:
   }
 }
 `)
-
 	cfg, err := Load(main)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	return cfg
+}
 
-	t.Run("override and refs", func(t *testing.T) {
-		if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
-			t.Fatalf("a.b.c int: got %d", got)
-		}
-		if _, ok := cfg.GetOK("a.b.c"); !ok {
-			t.Fatalf("GetOK a.b.c: expected ok")
-		}
-		if _, ok := cfg.GetOK("not.exists"); ok {
-			t.Fatalf("GetOK not.exists: expected not ok")
-		}
-		if got, _ := cfg.Get("a.b.c").Float64(); got != 456 {
-			t.Fatalf("a.b.c float64: got %v", got)
-		}
-		if got, _ := cfg.Get("a.b.d").Int(); got != 456 {
-			t.Fatalf("a.b.d ref int: got %d", got)
-		}
-		if got, _ := cfg.Get("a.b.e").String(); got != "from-env" {
-			t.Fatalf("a.b.e env: got %q", got)
-		}
-		if got, _ := cfg.Get("a.b.mix").String(); got != "x-hi-from-env" {
-			t.Fatalf("a.b.mix: got %q", got)
-		}
-	})
+func assertJSONCOverrideAndRefs(t *testing.T, cfg Config) {
+	t.Helper()
+	if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
+		t.Fatalf("a.b.c int: got %d", got)
+	}
+	if _, ok := cfg.GetOK("a.b.c"); !ok {
+		t.Fatalf("GetOK a.b.c: expected ok")
+	}
+	if _, ok := cfg.GetOK("not.exists"); ok {
+		t.Fatalf("GetOK not.exists: expected not ok")
+	}
+	if got, _ := cfg.Get("a.b.c").Float64(); got != 456 {
+		t.Fatalf("a.b.c float64: got %v", got)
+	}
+	if got, _ := cfg.Get("a.b.d").Int(); got != 456 {
+		t.Fatalf("a.b.d ref int: got %d", got)
+	}
+	if got, _ := cfg.Get("a.b.e").String(); got != "from-env" {
+		t.Fatalf("a.b.e env: got %q", got)
+	}
+	if got, _ := cfg.Get("a.b.mix").String(); got != "x-hi-from-env" {
+		t.Fatalf("a.b.mix: got %q", got)
+	}
+}
 
-	t.Run("set", func(t *testing.T) {
-		if err := cfg.Set("x.y.z", 9); err != nil {
-			t.Fatalf("Set: %v", err)
-		}
-		if got, _ := cfg.Get("x.y.z").Int(); got != 9 {
-			t.Fatalf("x.y.z: got %d", got)
-		}
+func assertJSONCSet(t *testing.T, cfg Config) {
+	t.Helper()
+	if err := cfg.Set("x.y.z", 9); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if got, _ := cfg.Get("x.y.z").Int(); got != 9 {
+		t.Fatalf("x.y.z: got %d", got)
+	}
+	if err := cfg.Set("a.b.c.leaf", 10); err == nil {
+		t.Fatalf("Set through non-object: expected error")
+	}
+	if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
+		t.Fatalf("a.b.c should remain unchanged after failed Set: got %d", got)
+	}
+}
 
-		if err := cfg.Set("a.b.c.leaf", 10); err == nil {
-			t.Fatalf("Set through non-object: expected error")
-		}
-		if got, _ := cfg.Get("a.b.c").Int(); got != 456 {
-			t.Fatalf("a.b.c should remain unchanged after failed Set: got %d", got)
-		}
-	})
-
-	t.Run("object", func(t *testing.T) {
-		var obj demoObj
-		if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
-			t.Fatalf("Object: %v", err)
-		}
-		if obj.N != 456 || obj.S != "k" {
-			t.Fatalf("obj: %+v", obj)
-		}
-	})
+func assertJSONCObject(t *testing.T, cfg Config) {
+	t.Helper()
+	var obj demoObj
+	if err := cfg.Object(&obj, WithObjectPath("obj")); err != nil {
+		t.Fatalf("Object: %v", err)
+	}
+	if obj.N != 456 || obj.S != "k" {
+		t.Fatalf("obj: %+v", obj)
+	}
 }
 
 func TestLoad_RefPrefersConfigPathOverEnvironment(t *testing.T) {
@@ -433,35 +445,31 @@ func TestResolve_CompositeReferenceCopiesProgrammaticMutableValues(t *testing.T)
 }
 
 func TestValue_Slice(t *testing.T) {
-	sl, err := (Value{v: []any{1, "a"}}).Slice()
-	if err != nil {
-		t.Fatalf("slice []any: %v", err)
+	tests := []struct {
+		name    string
+		in      any
+		wantLen int
+		wantErr bool
+	}{
+		{name: "[]any", in: []any{1, "a"}, wantLen: 2},
+		{name: "[]int", in: []int{7, 8}, wantLen: 2},
+		{name: "json string", in: `[1,2,3]`, wantLen: 3},
+		{name: "map", in: map[string]any{}, wantErr: true},
+		{name: "nil", in: nil, wantErr: true},
 	}
-	if len(sl) != 2 {
-		t.Fatalf("len: %d", len(sl))
-	}
-
-	intSl, err := (Value{v: []int{7, 8}}).Slice()
-	if err != nil {
-		t.Fatalf("slice []int: %v", err)
-	}
-	if len(intSl) != 2 {
-		t.Fatalf("len: %d", len(intSl))
-	}
-
-	jsonSl, err := (Value{v: `[1,2,3]`}).Slice()
-	if err != nil {
-		t.Fatalf("json string slice: %v", err)
-	}
-	if len(jsonSl) != 3 {
-		t.Fatalf("json len: %d", len(jsonSl))
-	}
-
-	if _, err := (Value{v: map[string]any{}}).Slice(); err == nil {
-		t.Fatalf("expected error for map")
-	}
-	if _, err := (Value{v: nil}).Slice(); err == nil {
-		t.Fatalf("expected error for nil")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := (Value{v: tt.in}).Slice()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil || len(got) != tt.wantLen {
+				t.Fatalf("len=%d err=%v, want %d", len(got), err, tt.wantLen)
+			}
+		})
 	}
 }
 

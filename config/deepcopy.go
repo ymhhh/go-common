@@ -43,25 +43,28 @@ func DeepCopy(value any) any {
 	case reflect.Array:
 		return deepCopyArray(rv).Interface()
 	case reflect.Pointer:
-		if rv.IsNil() {
-			return nil
-		}
-		// If pointer points to a mutable composite, copy the pointed-to value
-		// and return a pointer to the copy.
-		elem := rv.Elem()
-		switch elem.Kind() {
-		case reflect.Map, reflect.Slice, reflect.Array:
-			copied := DeepCopy(elem.Interface())
-			if copied == nil {
-				return reflect.Zero(rv.Type()).Interface()
-			}
-			ptr := reflect.New(elem.Type())
-			ptr.Elem().Set(reflect.ValueOf(copied))
-			return ptr.Interface()
-		}
-		return value
+		return deepCopyPointer(rv)
 	default:
 		return value
+	}
+}
+
+func deepCopyPointer(rv reflect.Value) any {
+	if rv.IsNil() {
+		return nil
+	}
+	elem := rv.Elem()
+	switch elem.Kind() {
+	case reflect.Map, reflect.Slice, reflect.Array:
+		copied := DeepCopy(elem.Interface())
+		if copied == nil {
+			return reflect.Zero(rv.Type()).Interface()
+		}
+		ptr := reflect.New(elem.Type())
+		ptr.Elem().Set(reflect.ValueOf(copied))
+		return ptr.Interface()
+	default:
+		return rv.Interface()
 	}
 }
 

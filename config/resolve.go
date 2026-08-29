@@ -24,38 +24,48 @@ func resolveAll(v any, lookup refLookup) error {
 func resolveAny(v any, lookup refLookup, visiting map[string]bool) error {
 	switch x := v.(type) {
 	case map[string]any:
-		for k, vv := range x {
-			if err := resolveAny(vv, lookup, visiting); err != nil {
-				return err
-			}
-			if s, ok := vv.(string); ok {
-				rv, err := resolveString(s, lookup, visiting)
-				if err != nil {
-					return err
-				}
-				x[k] = rv
-			} else {
-				x[k] = vv
-			}
-		}
-		return nil
+		return resolveMap(x, lookup, visiting)
 	case []any:
-		for i := range x {
-			if err := resolveAny(x[i], lookup, visiting); err != nil {
-				return err
-			}
-			if s, ok := x[i].(string); ok {
-				rv, err := resolveString(s, lookup, visiting)
-				if err != nil {
-					return err
-				}
-				x[i] = rv
-			}
-		}
-		return nil
+		return resolveSlice(x, lookup, visiting)
 	default:
 		return nil
 	}
+}
+
+func resolveMap(x map[string]any, lookup refLookup, visiting map[string]bool) error {
+	for k, vv := range x {
+		if err := resolveAny(vv, lookup, visiting); err != nil {
+			return err
+		}
+		resolved, err := resolveIfString(vv, lookup, visiting)
+		if err != nil {
+			return err
+		}
+		x[k] = resolved
+	}
+	return nil
+}
+
+func resolveSlice(x []any, lookup refLookup, visiting map[string]bool) error {
+	for i := range x {
+		if err := resolveAny(x[i], lookup, visiting); err != nil {
+			return err
+		}
+		resolved, err := resolveIfString(x[i], lookup, visiting)
+		if err != nil {
+			return err
+		}
+		x[i] = resolved
+	}
+	return nil
+}
+
+func resolveIfString(v any, lookup refLookup, visiting map[string]bool) (any, error) {
+	s, ok := v.(string)
+	if !ok {
+		return v, nil
+	}
+	return resolveString(s, lookup, visiting)
 }
 
 func resolveString(s string, lookup refLookup, visiting map[string]bool) (any, error) {
